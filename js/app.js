@@ -648,7 +648,7 @@ function bindAll() {
 // INIT
 // ============================================================
 bindAll();
-// Register service worker
+// Register service worker (chemin relatif → indépendant du sous-dossier d'hébergement)
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/calculateur_horaires/sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }

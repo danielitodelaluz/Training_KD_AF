@@ -1,38 +1,40 @@
-// Service Worker — CogPilote v1
-// Bump CACHE_NAME on each deploy to invalidate stale cache
-const CACHE_NAME = 'cogpilote-v2';
+// Service Worker — CogPilote
+// Bump CACHE_NAME on each deploy to invalidate stale cache.
+// Chemins RELATIFs : l'app fonctionne quel que soit le sous-dossier
+// d'hébergement (nom du dépôt GitHub Pages, domaine custom, etc.).
+const CACHE_NAME = 'cogpilote-v3';
 
 const PRECACHE = [
-  '/calculateur_horaires/',
-  '/calculateur_horaires/index.html',
-  '/calculateur_horaires/manifest.json',
-  '/calculateur_horaires/css/app.css',
-  '/calculateur_horaires/js/storage.js',
-  '/calculateur_horaires/js/engine.js',
-  '/calculateur_horaires/js/ui.js',
-  '/calculateur_horaires/js/app.js',
-  '/calculateur_horaires/js/exercises/registry.js',
-  '/calculateur_horaires/js/exercises/mental-math.js',
-  '/calculateur_horaires/js/exercises/multiplication.js',
-  '/calculateur_horaires/js/exercises/fractions.js',
-  '/calculateur_horaires/js/exercises/percentages.js',
-  '/calculateur_horaires/js/exercises/divisibility.js',
-  '/calculateur_horaires/js/exercises/alphabet-rank.js',
-  '/calculateur_horaires/js/exercises/letter-jumps.js',
-  '/calculateur_horaires/js/exercises/nback.js',
-  '/calculateur_horaires/js/exercises/digit-span.js',
-  '/calculateur_horaires/js/exercises/flash-memory.js',
-  '/calculateur_horaires/js/exercises/stroop-gonogo.js',
-  '/calculateur_horaires/js/exercises/visual-search.js',
-  '/calculateur_horaires/js/exercises/dual-task.js',
-  '/calculateur_horaires/js/exercises/reaction-time.js',
-  '/calculateur_horaires/js/exercises/logic-series.js',
-  '/calculateur_horaires/js/exercises/mental-rotation.js',
-  '/calculateur_horaires/js/exercises/angle-estimation.js',
-  '/calculateur_horaires/js/exercises/letter-bubbles.js',
-  '/calculateur_horaires/icons/icon.svg',
-  '/calculateur_horaires/icons/icon-192.png',
-  '/calculateur_horaires/icons/icon-512.png',
+  './',
+  './index.html',
+  './manifest.json',
+  './css/app.css',
+  './js/storage.js',
+  './js/engine.js',
+  './js/ui.js',
+  './js/app.js',
+  './js/exercises/registry.js',
+  './js/exercises/mental-math.js',
+  './js/exercises/multiplication.js',
+  './js/exercises/fractions.js',
+  './js/exercises/percentages.js',
+  './js/exercises/divisibility.js',
+  './js/exercises/alphabet-rank.js',
+  './js/exercises/letter-jumps.js',
+  './js/exercises/nback.js',
+  './js/exercises/digit-span.js',
+  './js/exercises/flash-memory.js',
+  './js/exercises/stroop-gonogo.js',
+  './js/exercises/visual-search.js',
+  './js/exercises/dual-task.js',
+  './js/exercises/reaction-time.js',
+  './js/exercises/logic-series.js',
+  './js/exercises/mental-rotation.js',
+  './js/exercises/angle-estimation.js',
+  './js/exercises/letter-bubbles.js',
+  './icons/icon.svg',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
 ];
 
 self.addEventListener('install', (e) => {
