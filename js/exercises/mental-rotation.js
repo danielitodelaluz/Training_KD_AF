@@ -39,7 +39,7 @@ function drawShape(canvas, points, angleDeg, mirrored = false, color = '#6366f1'
 
 const ANGLE_STEPS_BY_DIFF = [
   [45, 90, 135, 180, 270],          // D1
-  [90, 180, 270],                   // D2
+  [45, 90, 135, 180, 270],          // D2 (>= 4 angles distincts requis)
   [30, 45, 60, 90, 120, 150, 180, 270], // D3
   [30, 45, 60, 90, 120, 150, 210, 270], // D4
   [20, 40, 70, 110, 150, 200, 250, 310], // D5
@@ -63,11 +63,21 @@ export default {
     const correctAngle = pick(angles);
     const correctOption = pick(['A', 'B', 'C', 'D']);
 
-    // Generate 4 option angles (all different)
+    // Generate 4 option angles (all different). Garde-fou contre une boucle
+    // infinie si le jeu d'angles contient moins de 4 valeurs distinctes.
     const optionAngles = [correctAngle];
-    while (optionAngles.length < 4) {
+    let guard = 0;
+    while (optionAngles.length < 4 && guard < 200) {
+      guard++;
       const candidate = pick(angles);
       if (!optionAngles.includes(candidate)) optionAngles.push(candidate);
+    }
+    // Complète si besoin avec des angles décalés uniques
+    let extra = 15;
+    while (optionAngles.length < 4) {
+      const candidate = (correctAngle + extra) % 360;
+      if (!optionAngles.includes(candidate)) optionAngles.push(candidate);
+      extra += 15;
     }
     // Shuffle keeping correctAngle at correctOption position
     const optionLetters = ['A', 'B', 'C', 'D'];

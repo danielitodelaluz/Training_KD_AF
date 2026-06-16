@@ -330,7 +330,7 @@ html, body {
 .question-display.size-sm { font-size: 1.4rem; }
 .question-display.size-xs { font-size: 1.1rem; line-height: 1.5; }
 
-/* Feedback overlay */
+/* Feedback overlay — couvre toute la zone d'exercice, survit aux re-rendus */
 .feedback-overlay {
   position: absolute;
   inset: 0;
@@ -345,7 +345,8 @@ html, body {
   pointer-events: none;
   transition: opacity 120ms;
   border-radius: 0;
-  z-index: 5;
+  z-index: 50;
+  backdrop-filter: blur(1px);
 }
 .feedback-overlay.visible { opacity: 1; }
 .feedback-overlay.correct { background: var(--success-light); color: var(--success); }
@@ -357,8 +358,9 @@ html, body {
 .exercise-body {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 52px);
-  height: calc(100vh - 52px);
+  height: 100dvh;
+  height: 100vh;
+  position: relative;
 }
 
 /* === NUMPAD === */

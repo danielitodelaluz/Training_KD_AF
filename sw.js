@@ -1,6 +1,6 @@
 // Service Worker — CogPilote v1
 // Bump CACHE_NAME on each deploy to invalidate stale cache
-const CACHE_NAME = 'cogpilote-v1';
+const CACHE_NAME = 'cogpilote-v2';
 
 const PRECACHE = [
   '/calculateur_horaires/',
@@ -29,6 +29,7 @@ const PRECACHE = [
   '/calculateur_horaires/js/exercises/logic-series.js',
   '/calculateur_horaires/js/exercises/mental-rotation.js',
   '/calculateur_horaires/js/exercises/angle-estimation.js',
+  '/calculateur_horaires/js/exercises/letter-bubbles.js',
   '/calculateur_horaires/icons/icon.svg',
   '/calculateur_horaires/icons/icon-192.png',
   '/calculateur_horaires/icons/icon-512.png',

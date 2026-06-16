@@ -265,7 +265,10 @@ const ExerciseScreen = {
 
     Engine.onSequentialStart = (exercise) => {
       // UI setup only — engine.js calls startSequence() separately
-      document.getElementById('exercise-name-display').textContent = exercise.name;
+      this._teardownKeyboard(); // évite les fuites de listeners en mode mixte
+      Feedback.hide();
+      const level = Engine.getCurrentDifficulty(exercise.id);
+      document.getElementById('exercise-name-display').textContent = `${exercise.name} · N${level}`;
       document.getElementById('exercise-icon-display').textContent = exercise.icon;
       Numpad.hide();
       this._specialInputArea.innerHTML = '';
@@ -277,9 +280,6 @@ const ExerciseScreen = {
       this._teardownKeyboard();
       location.hash = '#summary';
     };
-
-    // Setup keyboard
-    this._setupKeyboard();
 
     // Setup numpad
     Numpad.init(this._numpadArea);
@@ -297,16 +297,31 @@ const ExerciseScreen = {
     Engine.start(AppState.pendingConfig);
   },
 
+  // Garantit la présence de #question-content (recréé après un exercice séquentiel
+  // qui aurait vidé toute la zone de question).
+  _ensureContent() {
+    let content = document.getElementById('question-content');
+    if (!content) {
+      const zone = document.getElementById('exercise-question-zone');
+      zone.innerHTML = '';
+      content = document.createElement('div');
+      content.id = 'question-content';
+      zone.appendChild(content);
+    }
+    return content;
+  },
+
   _renderItem(exercise, item) {
-    // Update header
-    document.getElementById('exercise-name-display').textContent = exercise.name;
+    // Update header (nom + niveau adaptatif courant)
+    const level = Engine.getCurrentDifficulty(exercise.id);
+    document.getElementById('exercise-name-display').textContent = `${exercise.name} · N${level}`;
     document.getElementById('exercise-icon-display').textContent = exercise.icon;
 
     // Teardown previous keyboard handler
     this._teardownKeyboard();
     Feedback.hide();
 
-    const zone = this._questionZone;
+    const zone = this._ensureContent();
     const special = this._specialInputArea;
 
     // Determine input type
@@ -331,28 +346,22 @@ const ExerciseScreen = {
       numpad: Numpad,
     });
 
-    // Install exercise keyboard handler
-    if (exercise.keyHandler) {
-      this._keyHandler = (e) => {
-        if (location.hash !== '#exercise') return;
-        exercise.keyHandler(e, (val) => Engine.submit(val));
-      };
-      document.addEventListener('keydown', this._keyHandler);
-    } else if (inputType === 'numeric') {
-      this._keyHandler = (e) => {
-        if (location.hash !== '#exercise') return;
+    // Gestionnaire clavier unique et additif : on appelle d'abord le keyHandler
+    // spécifique à l'exercice (s'il existe), puis on route les touches du pavé
+    // numérique pour les saisies numériques. Cela évite qu'un keyHandler vide
+    // ne désactive la saisie clavier sur ordinateur.
+    this._keyHandler = (e) => {
+      if (location.hash !== '#exercise') return;
+      if (exercise.keyHandler) exercise.keyHandler(e, (val) => Engine.submit(val));
+      if (inputType === 'numeric') {
         if ('0123456789'.includes(e.key)) Numpad.press(e.key);
         else if (e.key === 'Backspace') Numpad.press('backspace');
         else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); Numpad.press('confirm'); }
         else if (e.key === '-') Numpad.press('-');
         else if (e.key === '.') Numpad.press('.');
-      };
-      document.addEventListener('keydown', this._keyHandler);
-    }
-  },
-
-  _setupKeyboard() {
-    // Handled per-item in _renderItem
+      }
+    };
+    document.addEventListener('keydown', this._keyHandler);
   },
 
   _teardownKeyboard() {

@@ -13,6 +13,9 @@ export const Numpad = {
   init(containerEl) {
     this._el = containerEl;
     this._displayEl = containerEl.querySelector('#numpad-display');
+    // Idempotent : on n'attache le listener qu'une seule fois.
+    if (this._initialized) return;
+    this._initialized = true;
     containerEl.addEventListener('click', (e) => {
       const key = e.target.closest('[data-key]')?.dataset.key;
       if (key) this.press(key);

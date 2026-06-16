@@ -163,6 +163,7 @@ export default {
     let currentIndex = 0;
     let responseForCurrent = null; // null = no response yet, 'yes'/'no'
     let stimulusStart = 0;
+    let responseTime = 0;
 
     const enableButtons = () => {
       ouiBtn.disabled = false;
@@ -180,7 +181,14 @@ export default {
 
     const recordResponse = (response) => {
       if (currentIndex < n) return; // no recording before n stimuli
+      if (responseForCurrent !== null) return; // une seule réponse par stimulus
       responseForCurrent = response;
+      responseTime = performance.now();
+      // Retour visuel immédiat sur le bouton choisi
+      const btn = response === 'yes' ? ouiBtn : nonBtn;
+      btn.style.outline = '3px solid #fbbf24';
+      const clearOutline = setTimeout(() => { btn.style.outline = ''; }, 250);
+      this._timers.push(clearOutline);
     };
 
     ouiBtn.addEventListener('click', () => recordResponse('yes'));
@@ -199,6 +207,8 @@ export default {
       responseForCurrent = null;
       counterEl.textContent = `${index + 1} / ${length}`;
 
+      // Les boutons restent actifs pendant TOUT l'intervalle (stimulus + blanc),
+      // ce qui laisse le temps de répondre.
       if (index >= n) {
         enableButtons();
       } else {
@@ -217,8 +227,8 @@ export default {
 
       stimulusStart = performance.now();
 
+      // Masque le stimulus après stimulusDuration, mais garde les boutons actifs.
       const hideTimer = setTimeout(() => {
-        // Hide stimulus
         if (mode === 'letter') {
           if (letterDisplay) letterDisplay.textContent = '';
         } else {
@@ -227,14 +237,20 @@ export default {
             c.style.borderColor = '#475569';
           });
         }
+      }, stimulusDuration);
+      this._timers.push(hideTimer);
+
+      // Scoring et avance à la fin de l'intervalle complet.
+      const advanceTimer = setTimeout(() => {
         disableButtons();
 
-        // Record item if this was a scoreable position
         if (index >= n) {
           const match = isMatch[index];
           const userSaidYes = responseForCurrent === 'yes';
           const correct = match ? userSaidYes : !userSaidYes;
-          const time_ms = Math.round(performance.now() - stimulusStart);
+          const time_ms = responseForCurrent
+            ? Math.round(responseTime - stimulusStart)
+            : interval;
 
           items.push({
             question: mode === 'letter'
@@ -249,20 +265,17 @@ export default {
           });
         }
 
-        // Schedule next stimulus or finish
         if (index + 1 < length) {
-          const nextTimer = setTimeout(() => showStimulus(index + 1), blankDuration);
-          this._timers.push(nextTimer);
+          showStimulus(index + 1);
         } else {
-          // Done
           document.removeEventListener('keydown', keyListener);
           this._keyHandler = null;
           questionZone.innerHTML = '<div class="question-display">Séquence terminée !</div>';
           specialInput.innerHTML = '';
           onComplete(items);
         }
-      }, stimulusDuration);
-      this._timers.push(hideTimer);
+      }, interval);
+      this._timers.push(advanceTimer);
     };
 
     // Start after a short delay

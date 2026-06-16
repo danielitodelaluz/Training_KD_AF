@@ -10,7 +10,7 @@ export default {
   icon: '%',
   isSequential: false,
   requiresSpecialInput: false,
-  numpadExtras: [],
+  numpadExtras: ['dot'],
 
   getInputType() { return 'numeric'; },
 

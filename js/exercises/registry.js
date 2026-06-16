@@ -18,6 +18,7 @@ import ReactionTime from './reaction-time.js';
 import LogicSeries from './logic-series.js';
 import MentalRotation from './mental-rotation.js';
 import AngleEstimation from './angle-estimation.js';
+import LetterBubbles from './letter-bubbles.js';
 
 export const registry = [
   MentalMath,
@@ -37,4 +38,5 @@ export const registry = [
   LogicSeries,
   MentalRotation,
   AngleEstimation,
+  LetterBubbles,
 ];

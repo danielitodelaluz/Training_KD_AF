@@ -48,6 +48,8 @@ export const Engine = {
     this._startTime = performance.now();
     this._lastExerciseId = null;
     this._trackedTimers = new Set();
+    this._locked = false;
+    this._isSequential = false;
 
     const { registry, exerciseIds, startDifficulty } = config;
     this._exercises = exerciseIds.map((id) => registry.find((e) => e.id === id)).filter(Boolean);
@@ -79,7 +81,9 @@ export const Engine = {
   },
 
   submit(userAnswer) {
-    if (!this._active || this._isSequential) return;
+    // _locked empêche une double soumission pendant l'affichage du feedback.
+    if (!this._active || this._isSequential || this._locked) return;
+    this._locked = true;
     const exercise = this._currentExercise;
     const item = this._currentItem;
     const time_ms = Math.round(performance.now() - this._itemStartTime);
@@ -135,6 +139,7 @@ export const Engine = {
 
   _nextItem() {
     if (!this._active) return;
+    this._locked = false;
 
     // Vérifier la condition de fin en mode count
     if (this._config.mode === 'count' && this._items.length >= this._config.itemCount) {
@@ -259,6 +264,7 @@ export const Engine = {
   },
 
   _isSequential: false,
+  _locked: false,
   _currentExercise: null,
   _currentItem: null,
 };
