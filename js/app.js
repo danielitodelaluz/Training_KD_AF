@@ -252,9 +252,42 @@ const ExerciseScreen = {
       this._renderItem(exercise, item);
     };
 
-    Engine.onFeedback = (correct, correctAnswer, time_ms) => {
-      Feedback.show(correct, correctAnswer);
+    Engine.onFeedback = (correct, correctAnswer, time_ms, exercise, item, userAnswer) => {
+      // Compute hint if wrong
+      let hint = null;
+      if (!correct && exercise?.getHint) {
+        try { hint = exercise.getHint(item, userAnswer); } catch (_) {}
+      }
+
+      const isTimed = AppState.pendingConfig?.mode === 'timed';
+      // Show hint immediately only in count mode (timed → collect for summary)
+      Feedback.show(correct, correctAnswer, isTimed ? null : hint);
+
+      // Tag the item record with the hint for summary display
+      if (!correct && hint) {
+        const rec = Engine._items[Engine._items.length - 1];
+        if (rec) rec.hint = hint;
+      }
+
       Numpad.reset();
+
+      // Streak display (fire emoji when ≥ 3 consecutive correct)
+      const items = Engine._items;
+      let streak = 0;
+      for (let i = items.length - 1; i >= 0; i--) {
+        if (items[i].correct) streak++;
+        else break;
+      }
+      const streakEl = document.getElementById('exercise-streak');
+      if (streakEl) {
+        if (streak >= 3) {
+          streakEl.textContent = `🔥 ${streak}`;
+          streakEl.classList.remove('hidden');
+        } else {
+          streakEl.classList.add('hidden');
+        }
+      }
+
       if (AppState.pendingConfig?.mode === 'count') {
         const done = Engine._items.length;
         const total = AppState.pendingConfig.itemCount;
@@ -331,6 +364,13 @@ const ExerciseScreen = {
       Numpad.show();
       Numpad.reset();
       Numpad.showExtras(exercise.numpadExtras || []);
+      // Auto-submit: by length for 1-2 digit positive integers, by delay otherwise
+      const ans = item.answer || '';
+      if (/^\d{1,2}$/.test(ans)) {
+        Numpad.autoLength = ans.length;
+      } else {
+        Numpad.autoDelay = 650;
+      }
       special.classList.add('hidden');
       special.innerHTML = '';
     } else {
@@ -413,6 +453,33 @@ const SummaryScreen = {
     // Difficulty evolution
     const diffEl = document.getElementById('stat-difficulty');
     if (diffEl) diffEl.textContent = `N${summary.difficulty_start}→N${summary.difficulty_end}`;
+
+    // Error review with hints (especially useful in timed mode)
+    const errorItems = record.items.filter(i => !i.correct);
+    const errorsEl = document.getElementById('summary-errors-list');
+    const errorSection = document.getElementById('summary-errors-section');
+    if (errorsEl && errorSection) {
+      errorsEl.innerHTML = '';
+      if (errorItems.length === 0) {
+        errorSection.classList.add('hidden');
+      } else {
+        errorSection.classList.remove('hidden');
+        for (const ei of errorItems.slice(0, 8)) {
+          const div = document.createElement('div');
+          div.className = 'error-review-item';
+          const q = ei.question.replace(' = ?', '').replace(' + ? = 100', ' + □ = 100').replace('+?=1000','+ □ = 1000');
+          div.innerHTML = `
+            <div class="error-q">${q}</div>
+            <div class="error-answers">
+              <span class="error-user">Vous : <b>${ei.userAnswer || '—'}</b></span>
+              <span class="error-correct">Attendu : <b>${ei.correctAnswer}</b></span>
+            </div>
+            ${ei.hint ? `<div class="error-hint">💡 ${ei.hint}</div>` : ''}
+          `;
+          errorsEl.appendChild(div);
+        }
+      }
+    }
   },
 };
 

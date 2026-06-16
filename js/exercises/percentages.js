@@ -106,4 +106,40 @@ export default {
   keyHandler(e, submitFn) {
     // No special key handling needed
   },
+
+  getHint(item, userAnswer) {
+    const type = item.extraData?.type;
+    const correct = item.answer;
+    switch (type) {
+      case 'd1':
+      case 'd2': {
+        const m = item.question.match(/(\d+)% de (\d+)/);
+        if (m) {
+          const [, p, base] = m;
+          return `${p}% de ${base} : divisez par 100 puis multipliez par ${p}. ${base}÷100=${parseInt(base)/100}, ×${p}=${correct}`;
+        }
+        return null;
+      }
+      case 'd3': {
+        const m = item.question.match(/(\d+) est (\d+)% de \?/);
+        if (m) {
+          const [, part, p] = m;
+          return `"${part} est ${p}% de ?" → tout = ${part}×100÷${p} = ${correct}`;
+        }
+        return null;
+      }
+      case 'd4': {
+        const m = item.question.match(/(\d+) est \?% de (\d+)/);
+        if (m) {
+          const [, part, base] = m;
+          return `Trouvez % : (${part}÷${base})×100 = ${correct}%`;
+        }
+        return null;
+      }
+      case 'd5':
+        return `Règle de trois : (quantité cible × coût total) ÷ quantité de départ. Résultat : ${correct}`;
+      default:
+        return `Résultat attendu : ${correct}`;
+    }
+  },
 };

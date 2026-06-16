@@ -9,11 +9,15 @@ export const Numpad = {
   onConfirm: null,
   _el: null,
   _displayEl: null,
+  _initialized: false,
+  _autoTimer: null,
+  // Set per-item by app.js after reset():
+  autoLength: 0,  // auto-submit when buffer.length === autoLength (0 = off)
+  autoDelay: 0,   // auto-submit after ms of inactivity (0 = off)
 
   init(containerEl) {
     this._el = containerEl;
     this._displayEl = containerEl.querySelector('#numpad-display');
-    // Idempotent : on n'attache le listener qu'une seule fois.
     if (this._initialized) return;
     this._initialized = true;
     containerEl.addEventListener('click', (e) => {
@@ -23,18 +27,31 @@ export const Numpad = {
   },
 
   press(key) {
+    clearTimeout(this._autoTimer);
     if (key === 'backspace') {
       this.buffer = this.buffer.slice(0, -1);
     } else if (key === 'confirm') {
       if (this.buffer !== '' && this.onConfirm) this.onConfirm(this.buffer);
       return;
     } else if (this.buffer.length < this.maxLength) {
-      // Prevent double minus or double dot
       if (key === '-' && this.buffer.includes('-')) return;
       if (key === '.' && this.buffer.includes('.')) return;
-      // Minus only at start
       if (key === '-' && this.buffer.length > 0) return;
       this.buffer += key;
+      // Auto-submit by exact length (for short integer answers)
+      if (this.autoLength > 0 && this.buffer.length === this.autoLength) {
+        this._render();
+        const buf = this.buffer;
+        this.autoLength = 0;
+        if (this.onConfirm) this.onConfirm(buf);
+        return;
+      }
+      // Auto-submit by inactivity delay (for decimals / long answers)
+      if (this.autoDelay > 0) {
+        this._autoTimer = setTimeout(() => {
+          if (this.buffer !== '' && this.onConfirm) this.onConfirm(this.buffer);
+        }, this.autoDelay);
+      }
     }
     this._render();
   },
@@ -51,7 +68,10 @@ export const Numpad = {
   },
 
   reset() {
+    clearTimeout(this._autoTimer);
     this.buffer = '';
+    this.autoLength = 0;
+    this.autoDelay = 0;
     this._render();
   },
 
@@ -109,15 +129,17 @@ export const Feedback = {
   _el: null,
   _iconEl: null,
   _answerEl: null,
+  _hintEl: null,
   _hideTimer: null,
 
   init(el) {
     this._el = el;
     this._iconEl = el.querySelector('.feedback-icon');
     this._answerEl = el.querySelector('.feedback-answer');
+    this._hintEl = el.querySelector('.feedback-hint');
   },
 
-  show(correct, correctAnswer = null, delay = 900) {
+  show(correct, correctAnswer = null, hint = null, delay = 900) {
     if (!this._el) return;
     clearTimeout(this._hideTimer);
     this._el.className = 'feedback-overlay visible ' + (correct ? 'correct' : 'wrong');
@@ -127,7 +149,12 @@ export const Feedback = {
         ? `Réponse : ${correctAnswer}`
         : '';
     }
-    this._hideTimer = setTimeout(() => this.hide(), delay);
+    if (this._hintEl) {
+      this._hintEl.textContent = !correct && hint ? hint : '';
+      this._hintEl.classList.toggle('visible', !correct && Boolean(hint));
+    }
+    const actualDelay = (!correct && hint) ? Math.max(delay, 2200) : delay;
+    this._hideTimer = setTimeout(() => this.hide(), actualDelay);
   },
 
   hide() {

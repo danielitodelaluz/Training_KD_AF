@@ -112,4 +112,31 @@ export default {
   keyHandler(e, submitFn) {
     // No special key handling needed — numpad handles input
   },
+
+  getHint(item, userAnswer) {
+    const q = item.question;
+    const correct = parseInt(item.answer, 10);
+    if (q.includes('×')) {
+      const m = q.match(/(\d+) × (\d+)/);
+      if (m) {
+        const a = parseInt(m[1]), b = parseInt(m[2]);
+        const small = Math.min(a, b), large = Math.max(a, b);
+        if (small === 9) return `Astuce ×9 : ${large}×9 = ${large}×10 − ${large} = ${large * 10} − ${large} = ${correct}`;
+        if (small === 5) return `Astuce ×5 : ${large}×5 = (${large}×10)÷2 = ${large * 10}÷2 = ${correct}`;
+        if (small === 11 || large === 11) {
+          const n = small === 11 ? large : small;
+          if (n < 10) return `Astuce ×11 : répétez le chiffre → ${n}×11 = ${n}${n} = ${correct}`;
+        }
+        if (b >= 10) return `Décomposez : ${a}×${b} = ${a}×${Math.floor(b / 10) * 10} + ${a}×${b % 10} = ${a * Math.floor(b / 10) * 10} + ${a * (b % 10)} = ${correct}`;
+        return `${a}×${b} = ${correct}. Mémorisez cette table !`;
+      }
+    }
+    if (q.includes('÷')) {
+      const m = q.match(/(\d+) ÷ (\d+)/);
+      if (m) return `Table de ${m[2]} : quel n × ${m[2]} = ${m[1]} ? Réponse : ${correct}`;
+    }
+    if (q.includes('+')) return `Addition : regroupez les dizaines. Résultat : ${correct}`;
+    if (q.includes('−')) return `Soustraction : ${correct} + ${userAnswer} ≠ ${item.question.split('−')[0].trim()}. Résultat : ${correct}`;
+    return null;
+  },
 };

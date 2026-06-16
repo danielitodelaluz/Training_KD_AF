@@ -103,7 +103,7 @@ export const Engine = {
 
     this._updateDifficulty(exercise.id, correct);
 
-    if (this.onFeedback) this.onFeedback(correct, item.answer, time_ms);
+    if (this.onFeedback) this.onFeedback(correct, item.answer, time_ms, exercise, item, String(userAnswer));
 
     const t = this._track(setTimeout(() => this._nextItem(), FEEDBACK_DELAY));
   },

@@ -94,6 +94,7 @@
       <header class="exercise-header">
         <span id="exercise-icon-display" class="exercise-icon-display">🧠</span>
         <span id="exercise-name-display" class="exercise-name-display">Chargement…</span>
+        <span id="exercise-streak" class="exercise-streak hidden"></span>
         <span id="session-timer" class="session-timer font-mono">—</span>
         <button id="btn-stop-session" class="btn btn-ghost btn-icon" aria-label="Arrêter">✕</button>
       </header>
@@ -112,6 +113,7 @@
       <div id="feedback-overlay" class="feedback-overlay" aria-live="assertive">
         <span class="feedback-icon"></span>
         <span class="feedback-answer"></span>
+        <span class="feedback-hint"></span>
       </div>
 
       <!-- Zone de saisie spéciale -->
@@ -136,7 +138,7 @@
           <button class="numpad-key" data-key="0">0</button>
           <button class="numpad-key numpad-key--dot hidden" data-key=".">.</button>
           <button class="numpad-key numpad-key--backspace" data-key="backspace">⌫</button>
-          <button class="numpad-key numpad-key--confirm" data-key="confirm">Valider</button>
+          <button class="numpad-key numpad-key--confirm" data-key="confirm">✓</button>
         </div>
       </div>
     </div>
@@ -186,6 +188,11 @@
 
       <div class="section-title">Points faibles à travailler</div>
       <div id="summary-weak-list"></div>
+
+      <div id="summary-errors-section" class="hidden">
+        <div class="section-title">Erreurs — analyse &amp; conseils</div>
+        <div id="summary-errors-list"></div>
+      </div>
 
       <div class="summary-actions">
         <button id="btn-retry" class="btn btn-secondary">🔄 Rejouer</button>

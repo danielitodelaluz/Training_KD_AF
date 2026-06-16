@@ -169,4 +169,21 @@ export default {
   keyHandler(e, submitFn) {
     // No special key handling needed
   },
+
+  getHint(item, userAnswer) {
+    const dir = item.extraData?.direction;
+    const correct = item.answer;
+    switch (dir) {
+      case 'frac-to-dec':
+        return `Fraction → décimale : divisez numérateur ÷ dénominateur. Réponse : ${correct}`;
+      case 'dec-to-frac':
+        return `Décimale → fraction : trouvez le numérateur tel que ?/${item.extraData?.den || '?'} = ${item.question.split('=')[0].trim()}. Réponse : ${correct}`;
+      case 'frac-to-pct':
+        return `Fraction → % : (numérateur ÷ dénominateur) × 100. Réponse : ${correct}%`;
+      case 'pct-to-dec':
+        return `% → décimale : divisez par 100. Réponse : ${correct}`;
+      default:
+        return `Réponse attendue : ${correct}`;
+    }
+  },
 };

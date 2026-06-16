@@ -74,4 +74,25 @@ export default {
   keyHandler(e, submitFn) {
     // No special key handling needed
   },
+
+  getHint(item, userAnswer) {
+    const q = item.question;
+    const correct = parseInt(item.answer, 10);
+    const m = q.match(/(\d+) × (\?|\d+)/);
+    if (!m) return null;
+    const a = parseInt(m[1]);
+    if (q.includes('?')) {
+      const parts = q.match(/(\d+) × \? = (\d+)/);
+      if (parts) {
+        const [, fa, fc] = parts;
+        return `Facteur manquant : ${fc} ÷ ${fa} = ${correct}`;
+      }
+    }
+    const b = parseInt(m[2]);
+    const small = Math.min(a, b), large = Math.max(a, b);
+    if (small === 2) return `Table de 2 : ${large}+${large} = ${correct}`;
+    if (small === 5) return `Table de 5 : ${large}×5 = (${large}×10)÷2 = ${large * 10}÷2 = ${correct}`;
+    if (small === 9) return `Table de 9 : ${large}×9 = ${large}×10−${large} = ${large * 10}−${large} = ${correct}`;
+    return `${a}×${b} = ${correct}. Décomposez si besoin : ${a}×${Math.floor(b / 2) * 2} + ${a}×${b - Math.floor(b / 2) * 2}`;
+  },
 };
