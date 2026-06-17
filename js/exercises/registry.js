@@ -7,8 +7,11 @@ import Multiplication from './multiplication.js';
 import Fractions from './fractions.js';
 import Percentages from './percentages.js';
 import Divisibility from './divisibility.js';
+import PrimeNumbers from './prime-numbers.js';
 import AlphabetRank from './alphabet-rank.js';
 import LetterJumps from './letter-jumps.js';
+import Anagrams from './anagrams.js';
+import WordBox from './word-box.js';
 import NBack from './nback.js';
 import DigitSpan from './digit-span.js';
 import FlashMemory from './flash-memory.js';
@@ -28,8 +31,11 @@ export const registry = [
   Fractions,
   Percentages,
   Divisibility,
+  PrimeNumbers,
   AlphabetRank,
   LetterJumps,
+  Anagrams,
+  WordBox,
   NBack,
   DigitSpan,
   FlashMemory,

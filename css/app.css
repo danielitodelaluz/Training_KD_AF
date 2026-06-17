@@ -910,3 +910,107 @@ button:focus-visible { border-radius: var(--radius-sm); }
 
 /* Safe area for notched phones */
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+
+/* === WORD-BOX === */
+.wordbox-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 10px auto;
+  width: fit-content;
+}
+.wordbox-row { display: flex; gap: 3px; }
+.wordbox-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  transition: background 120ms;
+  flex-shrink: 0;
+}
+.wordbox-cell.highlight {
+  background: rgba(99,102,241,0.35);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* === ANAGRAMMES === */
+.anagram-scrambled {
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-align: center;
+  color: var(--accent);
+  margin: 6px 0 12px;
+  word-break: break-all;
+}
+.anagram-built {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  min-height: 48px;
+  margin-bottom: 14px;
+}
+.anagram-slot {
+  width: 38px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  background: var(--bg-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: transparent;
+  transition: border-color 120ms, color 120ms;
+}
+.anagram-slot.filled {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.anagram-tiles {
+  display: flex;
+  gap: 7px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.anagram-tile {
+  width: 42px;
+  height: 46px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--accent);
+  background: var(--accent-light);
+  color: var(--text);
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: opacity 150ms, background 150ms, transform 80ms;
+  touch-action: manipulation;
+}
+.anagram-tile:active { transform: scale(0.93); }
+.anagram-tile.used {
+  opacity: 0.25;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* === NOMBRES PREMIERS === */
+.prime-ref {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  margin-top: 8px;
+  text-align: center;
+  line-height: 1.5;
+}
