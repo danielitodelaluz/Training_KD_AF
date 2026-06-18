@@ -2,7 +2,7 @@
 // Bump CACHE_NAME on each deploy to invalidate stale cache.
 // Chemins RELATIFs : l'app fonctionne quel que soit le sous-dossier
 // d'hébergement (nom du dépôt GitHub Pages, domaine custom, etc.).
-const CACHE_NAME = 'cogpilote-v5';
+const CACHE_NAME = 'cogpilote-v6';
 
 const PRECACHE = [
   './',
