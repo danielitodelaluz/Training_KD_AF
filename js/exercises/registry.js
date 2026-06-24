@@ -3,6 +3,7 @@
 
 import MentalMath from './mental-math.js';
 import MentalMathTricks from './mental-math-tricks.js';
+import ChainArithmetic from './chain-arithmetic.js';
 import Multiplication from './multiplication.js';
 import Fractions from './fractions.js';
 import Percentages from './percentages.js';
@@ -22,11 +23,13 @@ import ReactionTime from './reaction-time.js';
 import LogicSeries from './logic-series.js';
 import MentalRotation from './mental-rotation.js';
 import AngleEstimation from './angle-estimation.js';
+import Marbles from './marbles.js';
 import LetterBubbles from './letter-bubbles.js';
 
 export const registry = [
   MentalMath,
   MentalMathTricks,
+  ChainArithmetic,
   Multiplication,
   Fractions,
   Percentages,
@@ -46,5 +49,6 @@ export const registry = [
   LogicSeries,
   MentalRotation,
   AngleEstimation,
+  Marbles,
   LetterBubbles,
 ];
