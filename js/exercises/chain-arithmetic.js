@@ -1,6 +1,8 @@
 // chain-arithmetic.js — Calcul mental en chaîne
 // Additions et soustractions enchaînées sur N termes configurables.
 // isSequential : gère config → rounds chronométrés → résumé.
+// Auto-valide dès que la saisie correspond à la bonne réponse.
+// Si la saisie est incorrecte : rien ne se passe.
 
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
@@ -38,9 +40,8 @@ export default {
   startSequence(difficulty, onComplete) {
     this.cleanup();
     const qz = document.getElementById('exercise-question-zone');
-    document.getElementById('numpad-area')?.classList.add('hidden');
     const si = document.getElementById('exercise-special-input');
-    if (si) { si.classList.add('hidden'); si.innerHTML = ''; }
+    document.getElementById('numpad-area')?.classList.add('hidden');
     if (!qz) return;
 
     const DEFAULTS = {
@@ -52,14 +53,15 @@ export default {
     };
     const cfg = { ...DEFAULTS[Math.min(difficulty, 5)] };
 
-    const flush = () => { for (const t of this._timers) clearTimeout(t); this._timers = []; };
-    const rmKey = () => {
+    const flush  = () => { for (const t of this._timers) clearTimeout(t); this._timers = []; };
+    const rmKey  = () => {
       if (this._keyHandler) { document.removeEventListener('keydown', this._keyHandler); this._keyHandler = null; }
     };
+    const hideNp = () => { if (si) { si.classList.add('hidden'); si.innerHTML = ''; } };
 
     // ── CONFIG ───────────────────────────────────────────────────────────
     const showConfig = () => {
-      flush(); rmKey();
+      flush(); rmKey(); hideNp();
       qz.innerHTML = '';
       const wrap = document.createElement('div');
       wrap.className = 'cha-config';
@@ -70,7 +72,6 @@ export default {
         <div class="cha-config-sub">Additions &amp; soustractions enchaînées</div>`;
       wrap.appendChild(h);
 
-      // Stepper: terms (2–7)
       const mkStepper = (label, key, min, max) => {
         const row = document.createElement('div');
         row.className = 'cha-cfg-row';
@@ -96,7 +97,6 @@ export default {
       };
       mkStepper('Termes', 'terms', 2, 7);
 
-      // Chip selector
       const mkChips = (label, key, opts) => {
         const row = document.createElement('div');
         row.className = 'cha-cfg-row';
@@ -119,10 +119,9 @@ export default {
         row.append(lbl, chips);
         wrap.appendChild(row);
       };
-      mkChips('Valeurs',    'maxVal', [{ v:9, l:'1–9' }, { v:19, l:'1–19' }, { v:29, l:'1–29' }]);
-      mkChips('Questions',  'rounds', [{ v:8, l:'8'   }, { v:12, l:'12'   }, { v:20, l:'20'   }]);
+      mkChips('Valeurs',   'maxVal', [{ v:9, l:'1–9' }, { v:19, l:'1–19' }, { v:29, l:'1–29' }]);
+      mkChips('Questions', 'rounds', [{ v:8, l:'8'   }, { v:12, l:'12'   }, { v:20, l:'20'   }]);
 
-      // Preview
       const prev = document.createElement('div');
       prev.className = 'cha-preview';
       prev.textContent = `Ex : ${makeExpression(cfg.terms, cfg.maxVal).str} = ?`;
@@ -146,6 +145,7 @@ export default {
       let expr = null;
       let locked = false;
 
+      // ── Question zone : compteur + expression + saisie + feedback ──────
       qz.innerHTML = '';
       const screen = document.createElement('div');
       screen.className = 'cha-screen';
@@ -168,44 +168,74 @@ export default {
       fbEl.className = 'cha-fb';
       screen.appendChild(fbEl);
 
-      // Inline numpad
-      const npEl = document.createElement('div');
-      npEl.className = 'cha-numpad';
-      screen.appendChild(npEl);
+      // ── Pavé numérique plein écran dans exercise-special-input ─────────
+      if (si) {
+        si.classList.remove('hidden');
+        si.innerHTML = '';
+        const npGrid = document.createElement('div');
+        npGrid.className = 'numpad-grid';
+        ['7','8','9','4','5','6','1','2','3','−','0','⌫'].forEach(k => {
+          const b = document.createElement('button');
+          b.className = k === '⌫' ? 'numpad-key numpad-key--backspace'
+                      : k === '−' ? 'numpad-key numpad-key--neg'
+                      : 'numpad-key';
+          b.textContent = k;
+          b.addEventListener('click', () => {
+            if (k === '⌫') bksp();
+            else if (k === '−') minus();
+            else digit(k);
+          });
+          npGrid.appendChild(b);
+        });
+        si.appendChild(npGrid);
+      }
 
-      const digit  = d => { if (locked || buf.replace('-','').length >= 4) return; buf += d; inputEl.textContent = buf; };
-      const bksp   = () => { if (locked) return; buf = buf.slice(0,-1); if (buf === '-') buf = ''; inputEl.textContent = buf; };
-      const minus  = () => { if (locked || buf !== '') return; buf = '-'; inputEl.textContent = buf; };
-      const confirm = () => {
+      // Auto-valide dès que buf === réponse attendue ; sinon rien.
+      const autoCheck = () => {
         if (locked || !buf || buf === '-') return;
+        if (parseInt(buf, 10) === expr.result) submit();
+      };
+
+      const digit = d => {
+        if (locked || buf.replace('-', '').length >= 4) return;
+        buf += d;
+        inputEl.textContent = buf;
+        autoCheck();
+      };
+      const bksp = () => {
+        if (locked) return;
+        buf = buf.slice(0, -1);
+        if (buf === '-') buf = '';
+        inputEl.textContent = buf;
+      };
+      const minus = () => {
+        if (locked || buf !== '') return;
+        buf = '-';
+        inputEl.textContent = buf;
+      };
+      const submit = () => {
         locked = true;
         const ms = Math.round(performance.now() - t0);
-        const ok = parseInt(buf, 10) === expr.result;
-        items.push({ question:`${expr.str} = ?`, correctAnswer:String(expr.result), userAnswer:buf, correct:ok, partial:false, time_ms:ms, difficulty });
-        fbEl.textContent = ok ? `✓  ${(ms/1000).toFixed(2)}s` : `✗  ${expr.result}  (${(ms/1000).toFixed(2)}s)`;
-        fbEl.className = 'cha-fb ' + (ok ? 'cha-fb--ok' : 'cha-fb--err');
+        items.push({
+          question: `${expr.str} = ?`,
+          correctAnswer: String(expr.result),
+          userAnswer: buf,
+          correct: true,
+          partial: false,
+          time_ms: ms,
+          difficulty,
+        });
+        fbEl.textContent = `✓  ${(ms / 1000).toFixed(2)}s`;
+        fbEl.className = 'cha-fb cha-fb--ok';
         const t = setTimeout(() => roundNum >= cfg.rounds ? showSummary(items) : next(), 700);
         this._timers.push(t);
       };
-
-      ['7','8','9','4','5','6','1','2','3','−','0','⌫'].forEach(k => {
-        const b = document.createElement('button');
-        b.className = 'cha-key';
-        b.textContent = k;
-        b.addEventListener('click', () => k === '⌫' ? bksp() : k === '−' ? minus() : digit(k));
-        npEl.appendChild(b);
-      });
-      const confKey = document.createElement('button');
-      confKey.className = 'cha-key cha-key--ok';
-      confKey.textContent = '✓';
-      confKey.addEventListener('click', confirm);
-      npEl.appendChild(confKey);
 
       this._keyHandler = e => {
         if (e.key >= '0' && e.key <= '9') digit(e.key);
         else if (e.key === 'Backspace') { e.preventDefault(); bksp(); }
         else if (e.key === '-') minus();
-        else if (e.key === 'Enter') confirm();
+        // Pas de Enter : la validation est automatique sur bonne réponse uniquement
       };
       document.addEventListener('keydown', this._keyHandler);
 
@@ -226,11 +256,10 @@ export default {
 
     // ── SUMMARY ──────────────────────────────────────────────────────────
     const showSummary = items => {
-      flush(); rmKey();
+      flush(); rmKey(); hideNp();
       const n = items.length;
-      const ok = items.filter(i => i.correct).length;
       const times = items.map(i => i.time_ms);
-      const avg = Math.round(times.reduce((a,b)=>a+b,0)/n);
+      const avg = Math.round(times.reduce((a, b) => a + b, 0) / n);
       const best = Math.min(...times);
       const worst = Math.max(...times);
       const maxT = worst || 1;
@@ -248,14 +277,14 @@ export default {
       const stats = document.createElement('div');
       stats.className = 'cha-stats';
       [
-        { v:`${ok}/${n}`, l:'Correct',  accent: ok===n },
-        { v:`${(avg/1000).toFixed(2)}s`, l:'Moyenne' },
-        { v:`${(best/1000).toFixed(2)}s`, l:'Meilleur', accent:true },
-        { v:`${(worst/1000).toFixed(2)}s`, l:'Pire' },
+        { v: `${n}/${n}`, l: 'Correct', accent: true },
+        { v: `${(avg / 1000).toFixed(2)}s`, l: 'Moyenne' },
+        { v: `${(best / 1000).toFixed(2)}s`, l: 'Meilleur', accent: true },
+        { v: `${(worst / 1000).toFixed(2)}s`, l: 'Pire' },
       ].forEach(({ v, l, accent }) => {
         const c = document.createElement('div');
         c.className = 'cha-stat';
-        c.innerHTML = `<div class="cha-stat-v${accent?' good':''}">${v}</div><div class="cha-stat-l">${l}</div>`;
+        c.innerHTML = `<div class="cha-stat-v${accent ? ' good' : ''}">${v}</div><div class="cha-stat-l">${l}</div>`;
         stats.appendChild(c);
       });
       s.appendChild(stats);
@@ -265,7 +294,6 @@ export default {
       recap.textContent = `${n} questions · ${cfg.terms} termes · max ${cfg.maxVal}`;
       s.appendChild(recap);
 
-      // Bar chart: time per question (vertical bars)
       const chartWrap = document.createElement('div');
       chartWrap.className = 'cha-chart';
       const chartTitle = document.createElement('div');
@@ -277,15 +305,14 @@ export default {
       items.forEach((item, i) => {
         const h = Math.max(4, Math.round((item.time_ms / maxT) * 60));
         const b = document.createElement('div');
-        b.className = 'cha-bar' + (item.correct ? '' : ' cha-bar--err');
+        b.className = 'cha-bar';
         b.style.height = h + 'px';
-        b.title = `Q${i+1}: ${(item.time_ms/1000).toFixed(2)}s`;
+        b.title = `Q${i + 1}: ${(item.time_ms / 1000).toFixed(2)}s`;
         bars.appendChild(b);
       });
       chartWrap.appendChild(bars);
       s.appendChild(chartWrap);
 
-      // Buttons
       const btns = document.createElement('div');
       btns.className = 'cha-summary-btns';
       const mkBtn = (cls, txt, fn) => {
@@ -304,6 +331,8 @@ export default {
   },
 
   cleanup() {
+    const si = document.getElementById('exercise-special-input');
+    if (si) { si.classList.add('hidden'); si.innerHTML = ''; }
     for (const t of this._timers) clearTimeout(t);
     this._timers = [];
     if (this._keyHandler) { document.removeEventListener('keydown', this._keyHandler); this._keyHandler = null; }
