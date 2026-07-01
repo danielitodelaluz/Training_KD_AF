@@ -1015,75 +1015,16 @@ button:focus-visible { border-radius: var(--radius-sm); }
   line-height: 1.5;
 }
 
-/* === BULLES DE LETTRES — mode choice + sandbox === */
-.lb-choice-wrap {
+/* === HORIZON ARTIFICIEL === */
+.horizon-wrap {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 20px 16px;
-  text-align: center;
-  min-height: 300px;
   justify-content: center;
+  padding: 6px 0 2px;
 }
-.lb-choice-icon { font-size: 3rem; line-height: 1; }
-.lb-choice-title { font-size: 1.15rem; font-weight: 800; color: var(--text); }
-.lb-choice-desc { font-size: 0.8rem; color: var(--text-muted); max-width: 280px; line-height: 1.5; }
-
-.lb-mode-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  max-width: 280px;
-  padding: 13px 16px;
-  border-radius: var(--radius);
-  background: var(--bg-card2);
-  border: 2px solid var(--border);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 150ms, background 150ms;
+.horizon-wrap canvas {
+  border-radius: 50%;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
 }
-.lb-mode-btn:active { transform: scale(0.98); }
-.lb-mode-btn strong { display: block; font-size: 0.95rem; }
-.lb-mode-btn small  { display: block; font-size: 0.73rem; color: var(--text-muted); margin-top: 2px; }
-.lb-mode-btn-icon   { font-size: 1.5rem; flex-shrink: 0; }
-.lb-mode-explore    { border-color: var(--accent); background: var(--accent-light); }
-.lb-mode-timed      { border-color: var(--success); background: rgba(34,197,94,0.1); }
-
-.lb-sand-header {
-  text-align: center;
-  margin-bottom: 8px;
-  padding: 0 4px;
-}
-.lb-sand-dir    { font-size: 0.95rem; font-weight: 700; color: var(--text); }
-.lb-sand-sub    { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
-.lb-sand-status { font-size: 0.82rem; font-weight: 600; min-height: 1.2em; margin-top: 4px; }
-
-.lb-sand-controls {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 10px;
-  padding: 0 4px;
-}
-.lb-ctrl-btn {
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-card2);
-  color: var(--text);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 130ms;
-  touch-action: manipulation;
-}
-.lb-ctrl-btn:active { background: var(--bg-card); }
-.lb-ctrl-hint  { border-color: var(--accent); color: var(--accent); }
-.lb-ctrl-play  { border-color: var(--success); color: var(--success); font-weight: 700; }
 
 /* === BILLES DANS LES TUBES === */
 .mrb-state-row {
