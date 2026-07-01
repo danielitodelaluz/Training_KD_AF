@@ -63,6 +63,7 @@ const HomeScreen = {
     grid.innerHTML = '';
 
     const categories = [
+      { key: 'aviation', label: 'Aéronautique' },
       { key: 'numerique', label: 'Calcul & Numérique' },
       { key: 'lettres', label: 'Lettres & Alphabet' },
       { key: 'memoire', label: 'Mémoire de travail' },
