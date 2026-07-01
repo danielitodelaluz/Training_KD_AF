@@ -9,6 +9,10 @@ import Fractions from './fractions.js';
 import Percentages from './percentages.js';
 import Divisibility from './divisibility.js';
 import PrimeNumbers from './prime-numbers.js';
+import TimeCalc from './time-calc.js';
+import SpeedDistance from './speed-distance.js';
+import Headings from './headings.js';
+import Horizon from './horizon.js';
 import AlphabetRank from './alphabet-rank.js';
 import LetterJumps from './letter-jumps.js';
 import Anagrams from './anagrams.js';
@@ -35,6 +39,10 @@ export const registry = [
   Percentages,
   Divisibility,
   PrimeNumbers,
+  TimeCalc,
+  SpeedDistance,
+  Headings,
+  Horizon,
   AlphabetRank,
   LetterJumps,
   Anagrams,
