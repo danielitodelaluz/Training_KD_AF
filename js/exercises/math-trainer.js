@@ -126,8 +126,12 @@ export default {
     const showConfig = () => {
       flush(); rmKey(); hideNp();
       qz.innerHTML = '';
+      // Config plus haute que l'écran : rendre la zone défilable, ancrée en haut
+      qz.style.overflowY = 'auto';
+      qz.style.justifyContent = 'flex-start';
       const wrap = document.createElement('div');
       wrap.className = 'cha-config';
+      wrap.style.width = '100%';
       qz.appendChild(wrap);
 
       const h = document.createElement('div');
@@ -151,6 +155,17 @@ export default {
         c.textContent = label;
         c.addEventListener('click', onClick);
         return c;
+      };
+
+      // Affichage du record — défini AVANT les rangées qui appellent refreshBest()
+      // (sinon ReferenceError en zone morte temporelle → écran tronqué sans bouton GO)
+      const bestEl = document.createElement('div');
+      bestEl.className = 'cha-preview';
+      bestEl.style.marginTop = '12px';
+      const refreshBest = () => {
+        const b = loadJSON(BEST_KEY, {})[cfgSignature(cfg)];
+        if (b == null) bestEl.textContent = 'Pas encore de record pour cette configuration';
+        else bestEl.textContent = cfg.mode === 'time' ? `🏆 Record : ${b} bonnes réponses` : `🏆 Record : ${fmtS(b)}`;
       };
 
       // Mode : durée ou nombre de questions
@@ -270,16 +285,8 @@ export default {
       presets.append(p1, p2, p3);
       renderNums();
 
-      // Record pour cette configuration
-      const bestEl = document.createElement('div');
-      bestEl.className = 'cha-preview';
-      bestEl.style.marginTop = '12px';
+      // Record pour cette configuration (élément créé plus haut)
       wrap.appendChild(bestEl);
-      const refreshBest = () => {
-        const b = loadJSON(BEST_KEY, {})[cfgSignature(cfg)];
-        if (b == null) bestEl.textContent = 'Pas encore de record pour cette configuration';
-        else bestEl.textContent = cfg.mode === 'time' ? `🏆 Record : ${b} bonnes réponses` : `🏆 Record : ${fmtS(b)}`;
-      };
       refreshBest();
 
       // Progression (rép./min sur les dernières sessions)
@@ -328,9 +335,11 @@ export default {
       wrap.appendChild(startBtn);
     };
 
-    // ── SESSION ───────────────────────────────────────────────────────────
+    // ── SESSION ────────────────────────────────────────────────────────────
     const runSession = () => {
       flush(); rmKey();
+      qz.style.overflowY = '';
+      qz.style.justifyContent = '';
       const items = [];
       let roundNum = 0;
       let buf = '';
@@ -515,8 +524,11 @@ export default {
       }
 
       qz.innerHTML = '';
+      qz.style.overflowY = 'auto';
+      qz.style.justifyContent = 'flex-start';
       const s = document.createElement('div');
       s.className = 'cha-summary';
+      s.style.width = '100%';
       qz.appendChild(s);
 
       const recordLine = isRecord && n > 0
@@ -629,6 +641,8 @@ export default {
   cleanup() {
     const si = document.getElementById('exercise-special-input');
     if (si) { si.classList.add('hidden'); si.innerHTML = ''; }
+    const qz = document.getElementById('exercise-question-zone');
+    if (qz) { qz.style.overflowY = ''; qz.style.justifyContent = ''; }
     for (const t of this._timers) { clearTimeout(t); clearInterval(t); }
     this._timers = [];
     if (this._keyHandler) { document.removeEventListener('keydown', this._keyHandler); this._keyHandler = null; }
