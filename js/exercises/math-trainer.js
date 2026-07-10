@@ -335,7 +335,7 @@ export default {
       wrap.appendChild(startBtn);
     };
 
-    // ── SESSION ────────────────────────────────────────────────────────────
+    // ── SESSION ───────────────────────────────────────────────────────────
     const runSession = () => {
       flush(); rmKey();
       qz.style.overflowY = '';
