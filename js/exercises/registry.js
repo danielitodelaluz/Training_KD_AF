@@ -1,11 +1,7 @@
 // registry.js — Registre de tous les exercices
 // Importe chaque module et les regroupe dans un tableau ordonné.
 
-import SprintMath from './sprint-math.js';
-import MentalMath from './mental-math.js';
-import MentalMathTricks from './mental-math-tricks.js';
-import ChainArithmetic from './chain-arithmetic.js';
-import Multiplication from './multiplication.js';
+import MathTrainer from './math-trainer.js';
 import Fractions from './fractions.js';
 import Percentages from './percentages.js';
 import Divisibility from './divisibility.js';
@@ -32,11 +28,7 @@ import Marbles from './marbles.js';
 import LetterBubbles from './letter-bubbles.js';
 
 export const registry = [
-  SprintMath,
-  MentalMath,
-  MentalMathTricks,
-  ChainArithmetic,
-  Multiplication,
+  MathTrainer,
   Fractions,
   Percentages,
   Divisibility,

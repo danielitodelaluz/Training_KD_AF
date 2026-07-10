@@ -2,7 +2,7 @@
 // Bump CACHE_NAME on each deploy to invalidate stale cache.
 // Chemins RELATIFs : l'app fonctionne quel que soit le sous-dossier
 // d'hébergement (nom du dépôt GitHub Pages, domaine custom, etc.).
-const CACHE_NAME = 'cogpilote-v11';
+const CACHE_NAME = 'cogpilote-v12';
 
 const PRECACHE = [
   './',
@@ -14,11 +14,7 @@ const PRECACHE = [
   './js/ui.js',
   './js/app.js',
   './js/exercises/registry.js',
-  './js/exercises/sprint-math.js',
-  './js/exercises/mental-math.js',
-  './js/exercises/mental-math-tricks.js',
-  './js/exercises/chain-arithmetic.js',
-  './js/exercises/multiplication.js',
+  './js/exercises/math-trainer.js',
   './js/exercises/fractions.js',
   './js/exercises/percentages.js',
   './js/exercises/divisibility.js',
