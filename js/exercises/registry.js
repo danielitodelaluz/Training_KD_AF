@@ -11,6 +11,7 @@ import SpeedDistance from './speed-distance.js';
 import Headings from './headings.js';
 import Horizon from './horizon.js';
 import AlphabetRank from './alphabet-rank.js';
+import LetterGap from './letter-gap.js';
 import LetterJumps from './letter-jumps.js';
 import Anagrams from './anagrams.js';
 import WordBox from './word-box.js';
@@ -38,6 +39,7 @@ export const registry = [
   Headings,
   Horizon,
   AlphabetRank,
+  LetterGap,
   LetterJumps,
   Anagrams,
   WordBox,
