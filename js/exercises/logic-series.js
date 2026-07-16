@@ -15,38 +15,52 @@ export default {
   isSequential: false,
   requiresSpecialInput: false,
   numpadExtras: ['neg'],
+
+  configSpec: {
+    intro: 'Trouvez le terme suivant de la suite',
+    params: [
+      { id: 'types', label: 'Types', type: 'multi', def: ['arith', 'geo'],
+        options: [
+          { v: 'arith', l: 'Arithmétiques' },
+          { v: 'geo', l: 'Géométriques' },
+          { v: 'alt', l: 'Alternées' },
+          { v: 'quad', l: 'Différences' },
+          { v: 'letter', l: 'Lettres' },
+        ] },
+    ],
+  },
+
   getInputType() { return 'numeric'; },
 
-  generate(difficulty) {
+  generate(params) {
+    const types = params.types && params.types.length ? params.types : ['arith'];
+    const type = pick(types);
     let terms, rule, answer, question, hint = '';
 
-    if (difficulty === 1) {
-      // Arithmetic +N
-      const start = rand(1, 20);
-      const step = rand(2, 6);
-      terms = [start, start+step, start+2*step, start+3*step, start+4*step];
-      answer = start + 5 * step;
-      rule = `+${step}`;
-
-    } else if (difficulty === 2) {
-      // Arithmetic −N or ×2/×3
-      const type = pick(['minus', 'multiply']);
-      if (type === 'minus') {
+    if (type === 'arith') {
+      // +N ou −N
+      if (Math.random() < 0.5) {
+        const start = rand(1, 20);
+        const step = rand(2, 6);
+        terms = [start, start+step, start+2*step, start+3*step, start+4*step];
+        answer = start + 5 * step;
+        rule = `+${step}`;
+      } else {
         const start = rand(30, 100);
         const step = rand(3, 12);
         terms = [start, start-step, start-2*step, start-3*step, start-4*step];
         answer = start - 5 * step;
         rule = `−${step}`;
-      } else {
-        const start = rand(1, 5);
-        const mult = pick([2, 3]);
-        terms = [start, start*mult, start*mult**2, start*mult**3, start*mult**4];
-        answer = start * mult ** 5;
-        rule = `×${mult}`;
       }
 
-    } else if (difficulty === 3) {
-      // Alternating two rules: +A, +B, +A, +B...
+    } else if (type === 'geo') {
+      const start = rand(1, 5);
+      const mult = pick([2, 3]);
+      terms = [start, start*mult, start*mult**2, start*mult**3, start*mult**4];
+      answer = start * mult ** 5;
+      rule = `×${mult}`;
+
+    } else if (type === 'alt') {
       const start = rand(1, 15);
       const stepA = rand(2, 5);
       const stepB = rand(5, 12);
@@ -58,11 +72,10 @@ export default {
       terms = terms.slice(0, 5);
       rule = `+${stepA}, +${stepB}, alternés`;
 
-    } else if (difficulty === 4) {
-      // Second differences (quadratic sequence)
+    } else if (type === 'quad') {
       const a0 = rand(1, 10);
-      const d1 = rand(2, 5);   // first difference (initial)
-      const d2 = rand(1, 3);   // second difference (constant)
+      const d1 = rand(2, 5);
+      const d2 = rand(1, 3);
       terms = [a0];
       let currentDiff = d1;
       for (let i = 0; i < 5; i++) {
@@ -74,16 +87,15 @@ export default {
       rule = 'différences des différences';
 
     } else {
-      // Letter sequences
+      // Suites de lettres
       const startRank = rand(1, 15);
       const jumps = [rand(1, 4), rand(1, 4), rand(1, 4)];
-      // Sequence: each step adds a progressively increasing jump
       const ranks = [startRank];
       for (let i = 0; i < 5; i++) {
         ranks.push(ranks[ranks.length - 1] + jumps[i % jumps.length]);
       }
       terms = ranks.slice(0, 5).map((r) => rankLetter(r));
-      answer = String(ranks[5]); // Answer is the rank (user types rank)
+      answer = String(ranks[5]);
       const letterAnswer = rankLetter(ranks[5]);
       hint = `A=1 … Z=26 — répondez par le rang (${letterAnswer} = ${ranks[5]})`;
       question = terms.join(', ') + ', ?';

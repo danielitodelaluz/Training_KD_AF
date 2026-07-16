@@ -2,7 +2,7 @@
 // Bump CACHE_NAME on each deploy to invalidate stale cache.
 // Chemins RELATIFs : l'app fonctionne quel que soit le sous-dossier
 // d'hébergement (nom du dépôt GitHub Pages, domaine custom, etc.).
-const CACHE_NAME = 'cogpilote-v15';
+const CACHE_NAME = 'cogpilote-v16';
 
 const PRECACHE = [
   './',
@@ -13,16 +13,13 @@ const PRECACHE = [
   './js/engine.js',
   './js/ui.js',
   './js/app.js',
+  './js/exercise-config.js',
   './js/exercises/registry.js',
   './js/exercises/math-trainer.js',
   './js/exercises/fractions.js',
   './js/exercises/percentages.js',
   './js/exercises/divisibility.js',
   './js/exercises/prime-numbers.js',
-  './js/exercises/time-calc.js',
-  './js/exercises/speed-distance.js',
-  './js/exercises/headings.js',
-  './js/exercises/horizon.js',
   './js/exercises/alphabet-rank.js',
   './js/exercises/letter-gap.js',
   './js/exercises/letter-jumps.js',
@@ -33,10 +30,8 @@ const PRECACHE = [
   './js/exercises/flash-memory.js',
   './js/exercises/stroop-gonogo.js',
   './js/exercises/visual-search.js',
-  './js/exercises/dual-task.js',
   './js/exercises/reaction-time.js',
   './js/exercises/logic-series.js',
-  './js/exercises/mental-rotation.js',
   './js/exercises/angle-estimation.js',
   './js/exercises/marbles.js',
   './js/exercises/letter-bubbles.js',

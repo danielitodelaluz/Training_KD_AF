@@ -12,6 +12,19 @@ export default {
   numpadExtras: [],
   getInputType() { return 'click'; },
 
+  configSpec: {
+    intro: 'Réagissez le plus vite possible… mais pas dans les pièges',
+    params: [
+      { id: 'nogo', label: 'Pièges (no-go)', type: 'chips', def: 0.2,
+        note: 'Cercle rouge ou 🌟 : ne pas appuyer',
+        options: [{ v: 0, l: 'Aucun' }, { v: 0.2, l: '20%' }, { v: 0.4, l: '40%' }] },
+      { id: 'rule', label: 'Règle étoile', type: 'chips', def: 'off',
+        options: [{ v: 'off', l: 'Sans' }, { v: 'on', l: 'Avec ★' }] },
+      { id: 'trials', label: 'Essais', type: 'chips', def: 10,
+        options: [{ v: 10, l: '10' }, { v: 15, l: '15' }, { v: 20, l: '20' }] },
+    ],
+  },
+
   _timers: [],
   _keyHandler: null,
 
@@ -19,14 +32,14 @@ export default {
   validate() { return { correct: true }; },
   renderQuestion() {},
 
-  startSequence(difficulty, onComplete) {
+  startSequence(params, onComplete) {
     this._timers = [];
     const items = [];
 
-    const TRIALS = 10;
-    const noGoChance = [0, 0, 0.2, 0.3, 0.4][difficulty - 1];
-    const timeout = [2000, 1800, 1500, 1300, 1100][difficulty - 1];
-    const useRule = difficulty === 5;
+    const TRIALS = params.trials ?? 10;
+    const noGoChance = params.nogo ?? 0.2;
+    const timeout = 1500;
+    const useRule = params.rule === 'on';
 
     const questionZone = document.getElementById('exercise-question-zone');
     const specialArea = document.getElementById('exercise-special-input');
@@ -107,7 +120,6 @@ export default {
             correct,
             partial: false,
             time_ms,
-            difficulty,
           });
           const nextTimer = setTimeout(nextTrial, 700);
           this._timers.push(nextTimer);
@@ -137,7 +149,6 @@ export default {
         correct,
         partial: false,
         time_ms,
-        difficulty,
       });
 
       const nextTimer = setTimeout(nextTrial, 600);

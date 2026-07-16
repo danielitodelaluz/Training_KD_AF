@@ -12,15 +12,37 @@ export default {
   requiresSpecialInput: false,
   numpadExtras: ['dot'],
 
+  configSpec: {
+    intro: 'Calculs de pourcentages, dans tous les sens',
+    params: [
+      { id: 'types', label: 'Questions', type: 'multi', def: ['pct'],
+        options: [
+          { v: 'pct', l: 'X% de Y' },
+          { v: 'whole', l: 'Trouver le tout' },
+          { v: 'findp', l: 'Trouver le %' },
+          { v: 'rule3', l: 'Règle de trois' },
+        ] },
+      { id: 'values', label: 'Valeurs', type: 'chips', def: 'easy',
+        options: [{ v: 'easy', l: 'Rondes' }, { v: 'hard', l: 'Variées' }] },
+    ],
+  },
+
   getInputType() { return 'numeric'; },
 
-  generate(difficulty) {
+  generate(params) {
+    const types = params.types && params.types.length ? params.types : ['pct'];
+    const type = pick(types);
+    const hard = params.values === 'hard';
     let question, answer, extraData;
 
-    if (difficulty === 1) {
-      // "X% de Y = ?" — simple percentages with round numbers
-      const percents = [10, 20, 25, 50, 75];
-      const bases    = [20, 40, 60, 80, 100, 120, 200, 400];
+    if (type === 'pct') {
+      // "X% de Y = ?" — l'option Variées élargit les pourcentages et bases
+      const percents = hard
+        ? [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 75, 80]
+        : [10, 20, 25, 50, 75];
+      const bases = hard
+        ? [100, 200, 300, 400, 500, 800, 1000]
+        : [20, 40, 60, 80, 100, 120, 200, 400];
       const p = pick(percents);
       const base = pick(bases);
       const result = Math.round(base * p / 100);
@@ -28,22 +50,9 @@ export default {
       answer = String(result);
       extraData = { type: 'd1', answerType: 'integer' };
 
-    } else if (difficulty === 2) {
-      // Arbitrary % of round number, integer answer
-      // Ensure integer: pick result and %, compute base
-      const p = pick([5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 75, 80]);
-      const bases = [100, 200, 300, 400, 500, 800, 1000];
-      const base = pick(bases);
-      const result = Math.round(base * p / 100);
-      question = `${p}% de ${base} = ?`;
-      answer = String(result);
-      extraData = { type: 'd2', answerType: 'integer' };
-
-    } else if (difficulty === 3) {
-      // Reverse: "X est P% de ?" — find the whole (ensure integer result)
-      const p = pick([10, 20, 25, 50]);
-      // result * (p/100) = part → whole = part * (100/p)
-      // Pick part as a clean multiple to get integer whole
+    } else if (type === 'whole') {
+      // "X est P% de ?" — retrouver le tout (résultat entier garanti)
+      const p = pick(hard ? [5, 10, 20, 25, 40, 50] : [10, 20, 25, 50]);
       const multiplier = rand(2, 20);
       const part = multiplier * p;
       const whole = multiplier * 100;
@@ -51,10 +60,10 @@ export default {
       answer = String(whole);
       extraData = { type: 'd3', answerType: 'integer' };
 
-    } else if (difficulty === 4) {
-      // "X est ?% de Y" — find the percentage
-      const p = pick([5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 80]);
-      const bases = [100, 200, 400, 500, 1000];
+    } else if (type === 'findp') {
+      // "X est ?% de Y"
+      const p = pick(hard ? [5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 80] : [10, 20, 25, 50, 75]);
+      const bases = hard ? [100, 200, 400, 500, 1000] : [100, 200, 400];
       const base = pick(bases);
       const part = Math.round(base * p / 100);
       question = `${part} est ?% de ${base}`;
@@ -62,19 +71,15 @@ export default {
       extraData = { type: 'd4', answerType: 'integer' };
 
     } else {
-      // D5: rule of three — "Si N pommes coûtent X€, combien coûtent M pommes?"
-      // Keep answer as integer or 1-decimal
+      // Règle de trois — "Si N pommes coûtent X€, combien coûtent M pommes ?"
       const items = ['pommes', 'stylos', 'oranges', 'cahiers', 'bonbons'];
       const units = ['€', 'F', 'pts'];
       const item = pick(items);
       const unit = pick(units);
-
-      // Ensure result is a clean number (integer or .5)
-      const pricePerItem2 = pick([1, 2, 3, 4, 5]); // price per 2 items (so per-item is 0.5 unit)
-      const n1 = pick([2, 3, 4, 5]);                // reference quantity
-      const cost1 = n1 * pricePerItem2;             // total cost for n1 items (integer)
-      const n2 = pick([3, 4, 6, 7, 8, 9, 10]);      // target quantity
-      // result = n2 * (cost1 / n1)
+      const pricePerItem2 = pick([1, 2, 3, 4, 5]);
+      const n1 = pick([2, 3, 4, 5]);
+      const cost1 = n1 * pricePerItem2;
+      const n2 = pick([3, 4, 6, 7, 8, 9, 10]);
       const resultRaw = n2 * cost1 / n1;
       const result = Math.round(resultRaw * 10) / 10;
 

@@ -1,18 +1,44 @@
 // letter-bubbles.js — Bulles de lettres
 // Des lettres apparaissent dans des bulles dispersées ; il faut cliquer dessus
-// le plus vite possible dans l'ordre alphabétique (ou inverse).
+// le plus vite possible dans l'ordre demandé (alphabétique ou inverse).
+// Réglages : sens, espacement des lettres (proches = plus difficile),
+// nombre de bulles, nombre de rounds.
 
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-// Tire `count` lettres distinctes. Contiguës aux niveaux faibles, dispersées ensuite.
-function pickLetters(count, scattered) {
-  if (!scattered) {
+// Tire `count` lettres distinctes selon le mode d'espacement.
+//  near : lettres contiguës dans l'alphabet (ordre difficile à trancher vite)
+//  far  : lettres séparées d'au moins 3 positions (ordre plus évident)
+//  mix  : tirage totalement aléatoire
+function pickLetters(count, spacing) {
+  if (spacing === 'near') {
     const start = rand(0, 26 - count);
     return ALPHABET.slice(start, start + count).split('');
   }
+  if (spacing === 'far') {
+    for (let attempt = 0; attempt < 300; attempt++) {
+      const pool = ALPHABET.split('');
+      const chosen = [];
+      for (let i = 0; i < count; i++) {
+        const idx = Math.floor(Math.random() * pool.length);
+        chosen.push(pool.splice(idx, 1)[0]);
+      }
+      const sorted = chosen.map((l) => ALPHABET.indexOf(l)).sort((a, b) => a - b);
+      let ok = true;
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i] - sorted[i - 1] < 3) { ok = false; break; }
+      }
+      if (ok) return chosen;
+    }
+    // Repli déterministe : positions régulièrement espacées, départ aléatoire
+    const step = Math.floor(25 / (count - 1));
+    const offset = rand(0, 25 - step * (count - 1));
+    return Array.from({ length: count }, (_, i) => ALPHABET[offset + i * step]);
+  }
+  // mix : aléatoire pur
   const pool = ALPHABET.split('');
   const chosen = [];
   for (let i = 0; i < count; i++) {
@@ -47,16 +73,6 @@ function layoutPositions(count, areaW, areaH, diameter) {
   return positions;
 }
 
-const CONFIGS = {
-  1: { count: 5, diameter: 66, scattered: false, directions: ['asc'] },
-  2: { count: 5, diameter: 62, scattered: false, directions: ['asc', 'desc'] },
-  3: { count: 6, diameter: 58, scattered: true,  directions: ['asc', 'desc'] },
-  4: { count: 6, diameter: 54, scattered: true,  directions: ['asc', 'desc'] },
-  5: { count: 7, diameter: 50, scattered: true,  directions: ['asc', 'desc'] },
-};
-
-const ROUNDS = 3;
-
 export default {
   id: 'letter-bubbles',
   name: 'Bulles de lettres',
@@ -65,6 +81,19 @@ export default {
   isSequential: true,
   requiresSpecialInput: false,
   numpadExtras: [],
+
+  configSpec: {
+    intro: 'Cliquez les bulles dans l\'ordre demandé, le plus vite possible',
+    params: [
+      { id: 'direction', label: 'Sens', type: 'chips', def: 'mix',
+        options: [{ v: 'asc', l: 'A→Z' }, { v: 'desc', l: 'Z→A' }, { v: 'mix', l: 'Mixte' }] },
+      { id: 'spacing', label: 'Espacement', type: 'chips', def: 'mix',
+        note: 'Lettres proches = ordre plus difficile à trancher',
+        options: [{ v: 'near', l: 'Proches' }, { v: 'far', l: 'Éloignées' }, { v: 'mix', l: 'Mixte' }] },
+      { id: 'count', label: 'Bulles', type: 'stepper', min: 4, max: 7, def: 5 },
+      { id: 'rounds', label: 'Rounds', type: 'stepper', min: 2, max: 5, def: 3 },
+    ],
+  },
 
   _timers: [],
   _keyHandler: null,
@@ -75,9 +104,11 @@ export default {
   validate(u, c) { return { correct: u === c }; },
   renderQuestion() {},
 
-  startSequence(difficulty, onComplete) {
+  startSequence(params, onComplete) {
     this._timers = [];
-    const cfg = CONFIGS[difficulty] || CONFIGS[1];
+    const count = params.count ?? 5;
+    const ROUNDS = params.rounds ?? 3;
+    const diameter = count >= 7 ? 50 : count >= 6 ? 56 : 62;
     const items = [];
     let roundNum = 0;
 
@@ -131,7 +162,6 @@ export default {
         correct,
         partial: !correct,
         time_ms,
-        difficulty,
       });
 
       const status = document.getElementById('lb-status');
@@ -154,9 +184,10 @@ export default {
       }
       roundNum++;
 
-      const letters = pickLetters(cfg.count, cfg.scattered);
+      const spacing = params.spacing === 'mix' ? pick(['near', 'far', 'mix']) : (params.spacing ?? 'mix');
+      const letters = pickLetters(count, spacing);
       const sorted = [...letters].sort();
-      const direction = pick(cfg.directions);
+      const direction = params.direction === 'mix' ? pick(['asc', 'desc']) : (params.direction ?? 'asc');
       const expected = direction === 'asc' ? sorted : [...sorted].reverse();
 
       current.expected = expected;
@@ -186,7 +217,7 @@ export default {
       playArea.style.cssText = `position:relative;width:${areaW}px;height:${areaH}px;margin:0 auto;`;
       questionZone.appendChild(playArea);
 
-      const positions = layoutPositions(cfg.count, areaW, areaH, cfg.diameter);
+      const positions = layoutPositions(count, areaW, areaH, diameter);
 
       letters.forEach((letter, i) => {
         const pos = positions[i];
@@ -197,10 +228,10 @@ export default {
         bubble.style.cssText = [
           'position:absolute',
           `left:${pos.x}px`, `top:${pos.y}px`,
-          `width:${cfg.diameter}px`, `height:${cfg.diameter}px`,
+          `width:${diameter}px`, `height:${diameter}px`,
           'border-radius:50%',
           'background:#1e293b', 'border:2px solid #475569', 'color:#e2e8f0',
-          `font-size:${Math.round(cfg.diameter * 0.42)}px`, 'font-weight:800',
+          `font-size:${Math.round(diameter * 0.42)}px`, 'font-weight:800',
           'cursor:pointer', 'user-select:none', '-webkit-tap-highlight-color:transparent',
           'transition:background 0.12s,border-color 0.12s,transform 0.12s',
           'display:flex', 'align-items:center', 'justify-content:center',

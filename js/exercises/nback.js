@@ -48,6 +48,18 @@ export default {
   requiresSpecialInput: false,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Le stimulus est-il identique à celui d\'il y a N coups ?',
+    params: [
+      { id: 'n', label: 'N-back', type: 'chips', def: 2,
+        options: [{ v: 1, l: '1' }, { v: 2, l: '2' }, { v: 3, l: '3' }, { v: 4, l: '4' }] },
+      { id: 'mode', label: 'Stimulus', type: 'chips', def: 'position',
+        options: [{ v: 'position', l: 'Positions' }, { v: 'letter', l: 'Lettres' }] },
+      { id: 'interval', label: 'Cadence', type: 'chips', def: 1500,
+        options: [{ v: 2000, l: '2s' }, { v: 1500, l: '1,5s' }, { v: 1200, l: '1,2s' }, { v: 1000, l: '1s' }] },
+    ],
+  },
+
   _timers: [],
   _keyHandler: null,
 
@@ -65,17 +77,12 @@ export default {
     // Not used for sequential exercises
   },
 
-  startSequence(difficulty, onComplete) {
+  startSequence(params, onComplete) {
     this._timers = [];
-    const configs = {
-      1: { n: 1, interval: 2000, length: 15, mode: 'position' },
-      2: { n: 2, interval: 1800, length: 18, mode: 'position' },
-      3: { n: 3, interval: 1500, length: 20, mode: 'position' },
-      4: { n: 4, interval: 1200, length: 22, mode: 'position' },
-      5: { n: 4, interval: 1000, length: 22, mode: 'letter' },
-    };
-    const cfg = configs[difficulty] || configs[1];
-    const { n, interval, length, mode } = cfg;
+    const n = params.n ?? 2;
+    const interval = params.interval ?? 1500;
+    const mode = params.mode ?? 'position';
+    const length = 20;
     const stimulusDuration = 600;
     const blankDuration = interval - stimulusDuration;
 
@@ -261,7 +268,6 @@ export default {
             correct,
             partial: false,
             time_ms,
-            difficulty,
           });
         }
 

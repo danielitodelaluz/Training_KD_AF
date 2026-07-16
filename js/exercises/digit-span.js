@@ -19,6 +19,17 @@ export default {
   requiresSpecialInput: false,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Mémorisez la suite de chiffres, puis restituez-la',
+    params: [
+      { id: 'length', label: 'Chiffres', type: 'stepper', min: 3, max: 9, def: 5 },
+      { id: 'order', label: 'Restitution', type: 'chips', def: 'fwd',
+        options: [{ v: 'fwd', l: 'Dans l\'ordre' }, { v: 'back', l: 'À rebours' }, { v: 'mix', l: 'Mixte' }] },
+      { id: 'speed', label: 'Affichage', type: 'chips', def: 500,
+        options: [{ v: 700, l: 'Lent' }, { v: 500, l: 'Moyen' }, { v: 350, l: 'Rapide' }] },
+    ],
+  },
+
   _timers: [],
   _keyHandler: null,
   _clickHandler: null,
@@ -37,27 +48,13 @@ export default {
     // Not used for sequential exercises
   },
 
-  startSequence(difficulty, onComplete) {
+  startSequence(params, onComplete) {
     this._timers = [];
 
-    const configs = {
-      1: { length: 3, backward: false },
-      2: { length: 4, backward: false },
-      3: { length: 5, backward: false },
-      4: { length: Math.random() < 0.5 ? 6 : 4, backward: Math.random() < 0.5 },
-      5: { length: 6, backward: true },
-    };
-
-    // Re-randomize D4 each time
-    let cfg;
-    if (difficulty === 4) {
-      const goBackward = Math.random() < 0.5;
-      cfg = { length: goBackward ? 4 : 6, backward: goBackward };
-    } else {
-      cfg = configs[difficulty] || configs[1];
-    }
-
-    const { length, backward } = cfg;
+    const length = params.length ?? 5;
+    const backward = params.order === 'back' ? true
+      : params.order === 'mix' ? Math.random() < 0.5
+      : false;
     const digits = generateDigits(length);
 
     const questionZone = document.getElementById('exercise-question-zone');
@@ -91,8 +88,8 @@ export default {
     if (numpadArea) numpadArea.classList.add('hidden');
 
     let digitIndex = 0;
-    const showDuration = 500;
-    const blankDuration = 300;
+    const showDuration = params.speed ?? 500;
+    const blankDuration = Math.round(showDuration * 0.6);
 
     const showNextDigit = () => {
       if (digitIndex >= digits.length) {
@@ -213,7 +210,6 @@ export default {
         correct,
         partial,
         time_ms: 0,
-        difficulty,
       };
 
       questionZone.innerHTML = `<div class="question-display" style="color:${correct ? '#22c55e' : '#ef4444'}">${correct ? '✓ Correct !' : '✗ ' + correctSequence}</div>`;

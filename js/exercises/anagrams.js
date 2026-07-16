@@ -50,6 +50,15 @@ const WORDS = {
   ],
 };
 
+// Tous les mots regroupés par longueur réelle (7 = 7 lettres et plus)
+const ALL_ENTRIES = Object.values(WORDS).flat();
+const POOL_BY_LEN = {
+  4: ALL_ENTRIES.filter((e) => e.w.length === 4),
+  5: ALL_ENTRIES.filter((e) => e.w.length === 5),
+  6: ALL_ENTRIES.filter((e) => e.w.length === 6),
+  7: ALL_ENTRIES.filter((e) => e.w.length >= 7),
+};
+
 // Remove duplicate used words within a session by keeping them as class state
 let _usedWords = new Set();
 
@@ -62,6 +71,14 @@ export default {
   requiresSpecialInput: true,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Reconstituez le mot français mélangé',
+    params: [
+      { id: 'lengths', label: 'Longueurs', type: 'multi', def: [5, 6],
+        options: [{ v: 4, l: '4' }, { v: 5, l: '5' }, { v: 6, l: '6' }, { v: 7, l: '7+' }] },
+    ],
+  },
+
   // Mutable state shared between renderQuestion and keyHandler
   _tiles: null,
   _built: null,
@@ -71,8 +88,10 @@ export default {
 
   getInputType() { return 'tiles'; },
 
-  generate(difficulty) {
-    const pool = WORDS[Math.min(difficulty, 5)] || WORDS[2];
+  generate(params) {
+    const lengths = params.lengths && params.lengths.length ? params.lengths : [5, 6];
+    const pool = lengths.flatMap((len) => POOL_BY_LEN[len] || []);
+    if (!pool.length) pool.push(...POOL_BY_LEN[5]);
     let entry;
     let attempts = 0;
     do {

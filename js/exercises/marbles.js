@@ -276,11 +276,22 @@ export default {
   requiresSpecialInput: false,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Combien de mouvements minimum pour atteindre l\'état cible ?',
+    params: [
+      { id: 'marbles', label: 'Billes', type: 'chips', def: 4,
+        options: [{ v: 4, l: '4' }, { v: 5, l: '5' }] },
+      { id: 'moves', label: 'Difficulté', type: 'chips', def: 2,
+        note: 'Nombre de mouvements minimum visé',
+        options: [{ v: 1, l: 'Facile (1-2)' }, { v: 2, l: 'Moyen (2-3)' }, { v: 4, l: 'Dur (4-5)' }] },
+    ],
+  },
+
   getInputType() { return 'numeric'; },
 
-  generate(difficulty) {
-    const numMarbles = difficulty <= 2 ? 4 : 5;
-    const targetMoves = [1, 2, 3, 4, 5][difficulty - 1] || 3;
+  generate(params) {
+    const numMarbles = params.marbles ?? 4;
+    const targetMoves = params.moves ?? 2;
 
     for (let attempt = 0; attempt < 250; attempt++) {
       const startTubes = randomDistribution(numMarbles);

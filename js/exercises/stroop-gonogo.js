@@ -7,19 +7,11 @@ const WORDS  = ['ROUGE', 'BLEU', 'VERT', 'JAUNE'];
 const COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#eab308'];
 
 // Returns { word, inkColor, isCongruent, shouldPress }
-function generateTrial(difficulty) {
+function generateTrial(noGoChance) {
   const wordIdx = rand(0, 3);
   const word = WORDS[wordIdx];
 
   let inkIdx;
-  let noGoChance = 0;
-
-  if (difficulty === 1) { noGoChance = 0; }
-  else if (difficulty === 2) { noGoChance = 0.4; }
-  else if (difficulty === 3) { noGoChance = 0.4; }
-  else if (difficulty === 4) { noGoChance = 0.5; }
-  else { noGoChance = 0.5; }
-
   let isCongruent;
   if (Math.random() < noGoChance) {
     // Force incongruent (no-go)
@@ -48,6 +40,19 @@ export default {
   requiresSpecialInput: false,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Appuyez seulement si la couleur du texte correspond au mot',
+    params: [
+      { id: 'timeout', label: 'Cadence', type: 'chips', def: 1500,
+        options: [{ v: 2000, l: '2s' }, { v: 1500, l: '1,5s' }, { v: 1200, l: '1,2s' }, { v: 800, l: '0,8s' }] },
+      { id: 'nogo', label: 'Pièges', type: 'chips', def: 0.4,
+        note: 'Part d\'essais où il ne faut PAS appuyer',
+        options: [{ v: 0.3, l: '30%' }, { v: 0.4, l: '40%' }, { v: 0.5, l: '50%' }] },
+      { id: 'trials', label: 'Essais', type: 'chips', def: 15,
+        options: [{ v: 10, l: '10' }, { v: 15, l: '15' }, { v: 20, l: '20' }] },
+    ],
+  },
+
   _timers: [],
   _keyHandler: null,
 
@@ -63,16 +68,16 @@ export default {
 
   renderQuestion(_container, _item, _ctx) {},
 
-  startSequence(difficulty, onComplete) {
+  startSequence(params, onComplete) {
     this._timers = [];
 
-    const SEQUENCE_LENGTH = 15;
-    const timeouts = { 1: 2000, 2: 1500, 3: 1500, 4: 1200, 5: 800 };
-    const timeout_ms = timeouts[difficulty] || 2000;
+    const SEQUENCE_LENGTH = params.trials ?? 15;
+    const timeout_ms = params.timeout ?? 1500;
+    const noGoChance = params.nogo ?? 0.4;
 
     const trials = [];
     for (let i = 0; i < SEQUENCE_LENGTH; i++) {
-      trials.push(generateTrial(difficulty));
+      trials.push(generateTrial(noGoChance));
     }
 
     const questionZone = document.getElementById('exercise-question-zone');
@@ -169,7 +174,6 @@ export default {
           correct,
           partial: false,
           time_ms,
-          difficulty,
         });
       };
 
@@ -208,7 +212,6 @@ export default {
             correct,
             partial: false,
             time_ms: timeout_ms,
-            difficulty,
           });
         }
 

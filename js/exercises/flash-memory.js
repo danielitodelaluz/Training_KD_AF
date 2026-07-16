@@ -28,6 +28,18 @@ export default {
   requiresSpecialInput: false,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Mémorisez les cases allumées en un éclair',
+    params: [
+      { id: 'count', label: 'Cases', type: 'stepper', min: 3, max: 8, def: 5 },
+      { id: 'colors', label: 'Couleurs', type: 'chips', def: 1,
+        note: 'Plusieurs couleurs = plus d\'informations à retenir',
+        options: [{ v: 1, l: 'Une' }, { v: 3, l: '3' }, { v: 6, l: '6' }] },
+      { id: 'display', label: 'Affichage', type: 'chips', def: 1000,
+        options: [{ v: 1500, l: '1,5s' }, { v: 1000, l: '1s' }, { v: 600, l: '0,6s' }] },
+    ],
+  },
+
   _timers: [],
 
   getInputType() { return 'none'; },
@@ -44,18 +56,12 @@ export default {
     // Not used for sequential exercises
   },
 
-  startSequence(difficulty, onComplete) {
+  startSequence(params, onComplete) {
     this._timers = [];
 
-    const configs = {
-      1: { count: 3, numColors: 1, displayMs: 1500 },
-      2: { count: 4, numColors: 1, displayMs: 1200 },
-      3: { count: 5, numColors: 2, displayMs: 1000 },
-      4: { count: 6, numColors: 4, displayMs: 800 },
-      5: { count: 7, numColors: 6, displayMs: 500 },
-    };
-    const cfg = configs[difficulty] || configs[1];
-    const { count, numColors, displayMs } = cfg;
+    const count = params.count ?? 5;
+    const numColors = params.colors ?? 1;
+    const displayMs = params.display ?? 1000;
 
     // Pick which cells to light and what colors to use
     const litIndices = pickIndices(16, count);
@@ -183,13 +189,12 @@ export default {
       }
 
       const item = {
-        question: `Flash ${count} cellules (D${difficulty})`,
+        question: `Flash ${count} cellules`,
         correctAnswer: [...litIndices].sort((a, b) => a - b).join(','),
         userAnswer: [...userSet].sort((a, b) => a - b).join(','),
         correct,
         partial: partialFlag,
         time_ms: displayMs,
-        difficulty,
       };
 
       const doneTimer = setTimeout(() => onComplete([item]), 1200);

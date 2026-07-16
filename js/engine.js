@@ -1,11 +1,8 @@
-// engine.js — Moteur de session, difficulté adaptative, scoring
+// engine.js — Moteur de session et scoring
+// La difficulté est choisie par l'utilisateur via l'écran de réglages de
+// chaque exercice (configSpec) : le moteur transmet simplement `params`
+// à generate()/startSequence(), sans niveau global ni adaptation.
 import { Storage } from './storage.js';
-
-// Seuils de difficulté adaptative (modifiables ici)
-const ADAPT_WINDOW = 8;       // nombre d'items dans la fenêtre glissante
-const ADAPT_UP_THRESHOLD = 0.85;   // accuracy >= seuil → augmenter
-const ADAPT_DOWN_THRESHOLD = 0.40; // accuracy <= seuil → diminuer
-const ADAPT_MIN_ITEMS = 6;    // minimum d'items avant d'évaluer
 
 const FEEDBACK_DELAY = 900;   // ms d'affichage du feedback
 
@@ -13,17 +10,13 @@ export const Engine = {
   // Etat de session
   _active: false,
   _config: null,
-  _exercise: null,    // exercice courant (mode single)
-  _exercises: [],     // liste pour le mode mixte
+  _exercise: null,
+  _params: {},
   _items: [],
   _startTime: 0,
   _itemStartTime: 0,
   _sessionTimer: null,
   _elapsed: 0,
-  _lastExerciseId: null,
-
-  // Difficulté par exercice (en mémoire, persistée à la fin)
-  _diffState: {},
 
   // Timers trackés pour abort propre
   _trackedTimers: new Set(),
@@ -40,32 +33,19 @@ export const Engine = {
   // --- API publique ---
 
   start(config) {
-    // config: { exerciseIds, mode, duration_ms, itemCount, startDifficulty, registry }
+    // config: { exerciseId, mode, duration_ms, itemCount, params, registry }
     this._active = true;
     this._config = config;
     this._items = [];
     this._elapsed = 0;
     this._startTime = performance.now();
-    this._lastExerciseId = null;
     this._trackedTimers = new Set();
     this._locked = false;
     this._isSequential = false;
+    this._params = config.params || {};
 
-    const { registry, exerciseIds, startDifficulty } = config;
-    this._exercises = exerciseIds.map((id) => registry.find((e) => e.id === id)).filter(Boolean);
-
-    // Initialiser la difficulté
-    this._diffState = {};
-    for (const ex of this._exercises) {
-      const baseLevel =
-        startDifficulty === 'adaptive'
-          ? Storage.getDifficulty(ex.id)
-          : parseInt(startDifficulty) || 1;
-      this._diffState[ex.id] = {
-        level: Math.max(1, Math.min(5, baseLevel)),
-        window: [],
-      };
-    }
+    this._exercise = config.registry.find((e) => e.id === config.exerciseId);
+    if (!this._exercise) { this._active = false; return; }
 
     // Démarrer le timer
     if (config.mode === 'timed') {
@@ -84,7 +64,7 @@ export const Engine = {
     // _locked empêche une double soumission pendant l'affichage du feedback.
     if (!this._active || this._isSequential || this._locked) return;
     this._locked = true;
-    const exercise = this._currentExercise;
+    const exercise = this._exercise;
     const item = this._currentItem;
     const time_ms = Math.round(performance.now() - this._itemStartTime);
 
@@ -97,22 +77,19 @@ export const Engine = {
       correct,
       partial,
       time_ms,
-      difficulty: this._diffState[exercise.id].level,
     };
     this._items.push(record);
 
-    this._updateDifficulty(exercise.id, correct);
-
     if (this.onFeedback) this.onFeedback(correct, item.answer, time_ms, exercise, item, String(userAnswer));
 
-    const t = this._track(setTimeout(() => this._nextItem(), FEEDBACK_DELAY));
+    this._track(setTimeout(() => this._nextItem(), FEEDBACK_DELAY));
   },
 
   // Appelé par les exercices séquentiels quand ils ont terminé
   resumeFromSequential(items) {
     this._isSequential = false;
     for (const item of items) this._items.push(item);
-    const t = this._track(setTimeout(() => this._nextItem(), 300));
+    this._track(setTimeout(() => this._nextItem(), 300));
   },
 
   abort() {
@@ -123,16 +100,11 @@ export const Engine = {
     this._trackedTimers.clear();
 
     // Nettoyage de l'exercice courant
-    const ex = this._currentExercise;
-    if (ex?.cleanup) ex.cleanup();
+    if (this._exercise?.cleanup) this._exercise.cleanup();
   },
 
   isActive() {
     return this._active;
-  },
-
-  getCurrentDifficulty(exerciseId) {
-    return this._diffState[exerciseId]?.level ?? 1;
   },
 
   // --- Interne ---
@@ -153,50 +125,17 @@ export const Engine = {
       return;
     }
 
-    // Choisir l'exercice
-    const exercise = this._pickExercise();
-    this._currentExercise = exercise;
-    this._lastExerciseId = exercise.id;
-
-    const difficulty = this._diffState[exercise.id].level;
+    const exercise = this._exercise;
 
     if (exercise.isSequential) {
       this._isSequential = true;
       if (this.onSequentialStart) this.onSequentialStart(exercise);
-      exercise.startSequence(difficulty, (items) => this.resumeFromSequential(items));
+      exercise.startSequence(this._params, (items) => this.resumeFromSequential(items));
     } else {
-      const item = exercise.generate(difficulty);
+      const item = exercise.generate(this._params);
       this._currentItem = item;
       this._itemStartTime = performance.now();
       if (this.onNextItem) this.onNextItem(exercise, item);
-    }
-  },
-
-  _pickExercise() {
-    if (this._exercises.length === 1) return this._exercises[0];
-
-    // En mode mixte : ne pas répéter le même exercice consécutivement
-    const candidates = this._exercises.filter((e) => e.id !== this._lastExerciseId);
-    return candidates[Math.floor(Math.random() * candidates.length)];
-  },
-
-  _updateDifficulty(exerciseId, correct) {
-    const state = this._diffState[exerciseId];
-    if (!state) return;
-
-    state.window.push(correct);
-    if (state.window.length > ADAPT_WINDOW) state.window.shift();
-
-    if (state.window.length < ADAPT_MIN_ITEMS) return;
-
-    const accuracy = state.window.filter(Boolean).length / state.window.length;
-
-    if (accuracy >= ADAPT_UP_THRESHOLD && state.level < 5) {
-      state.level++;
-      state.window = [];
-    } else if (accuracy <= ADAPT_DOWN_THRESHOLD && state.level > 1) {
-      state.level--;
-      state.window = [];
     }
   },
 
@@ -207,17 +146,13 @@ export const Engine = {
     for (const t of this._trackedTimers) clearTimeout(t);
     this._trackedTimers.clear();
 
-    // Persister les niveaux de difficulté
-    for (const [id, state] of Object.entries(this._diffState)) {
-      Storage.setDifficulty(id, state.level);
-    }
-
     const summary = this._computeSummary();
     const record = {
       id: this._generateId(),
       date: new Date().toISOString(),
-      exerciseId: this._exercises.length === 1 ? this._exercises[0].id : 'mixed',
+      exerciseId: this._exercise.id,
       mode: this._config.mode,
+      params: this._params,
       items: this._items,
       summary,
     };
@@ -232,7 +167,7 @@ export const Engine = {
     const items = this._items;
     if (items.length === 0) {
       return { accuracy: 0, avg_time_ms: 0, median_time_ms: 0, items_per_min: 0, score: 0,
-               difficulty_start: 1, difficulty_end: 1, total_items: 0, correct_items: 0 };
+               total_items: 0, correct_items: 0 };
     }
 
     const correct = items.filter((i) => i.correct).length;
@@ -246,11 +181,7 @@ export const Engine = {
     const speedFactor = Math.min(1, 3000 / Math.max(avg_time_ms, 100));
     const score = Math.round(accuracy * speedFactor * 100);
 
-    const diffStart = items[0]?.difficulty ?? 1;
-    const diffEnd = items[items.length - 1]?.difficulty ?? diffStart;
-
     return { accuracy, avg_time_ms, median_time_ms, items_per_min, score,
-             difficulty_start: diffStart, difficulty_end: diffEnd,
              total_items: items.length, correct_items: correct };
   },
 
@@ -265,6 +196,5 @@ export const Engine = {
 
   _isSequential: false,
   _locked: false,
-  _currentExercise: null,
   _currentItem: null,
 };

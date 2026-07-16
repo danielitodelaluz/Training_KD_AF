@@ -23,11 +23,10 @@ function buildPool(min, max) {
 }
 
 const POOLS = {
-  1: buildPool(2, 30),
-  2: buildPool(2, 100),
-  3: buildPool(2, 300),
-  4: buildPool(100, 600),
-  5: buildPool(200, 999),
+  30: buildPool(2, 30),
+  100: buildPool(2, 100),
+  300: buildPool(2, 300),
+  999: buildPool(100, 999),
 };
 
 // Return smallest prime factor of n (n > 1, n composite)
@@ -50,10 +49,21 @@ export default {
   requiresSpecialInput: true,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Premier ou composé ?',
+    params: [
+      { id: 'range', label: 'Plage', type: 'chips', def: 100,
+        options: [
+          { v: 30, l: '2-30' }, { v: 100, l: '2-100' },
+          { v: 300, l: '2-300' }, { v: 999, l: '100-999' },
+        ] },
+    ],
+  },
+
   getInputType() { return 'choice'; },
 
-  generate(difficulty) {
-    const pool = POOLS[Math.min(difficulty, 5)];
+  generate(params) {
+    const pool = POOLS[params.range] ?? POOLS[100];
     const isPrimeAnswer = Math.random() < 0.5;
     const src = isPrimeAnswer ? pool.primes : pool.composites;
     const n = src[Math.floor(Math.random() * src.length)];

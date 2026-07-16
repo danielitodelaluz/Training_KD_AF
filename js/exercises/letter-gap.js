@@ -10,14 +10,12 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const rankOf = (letter) => ALPHABET.indexOf(letter) + 1;
 
 // Tire une paire de lettres séparées d'un écart dans [minGap, maxGap],
-// toutes deux comprises dans les positions 0..zoneMax. Ordre d'affichage
-// aléatoire (croissant ou décroissant).
-function makeGap(minGap, maxGap, zoneMax) {
+// toutes deux comprises dans les positions 0..zoneMax.
+function makeGap(minGap, maxGap, zoneMax, ascending) {
   const gap = rand(minGap, Math.min(maxGap, zoneMax));
   const startIdx = rand(0, zoneMax - gap);
   const lowIdx = startIdx;
   const highIdx = startIdx + gap;
-  const ascending = Math.random() < 0.5;
   const [firstIdx, secondIdx] = ascending ? [lowIdx, highIdx] : [highIdx, lowIdx];
   return {
     first: ALPHABET[firstIdx],
@@ -26,6 +24,13 @@ function makeGap(minGap, maxGap, zoneMax) {
     ascending,
   };
 }
+
+const AMPLITUDES = {
+  small: [1, 3],
+  medium: [4, 8],
+  large: [9, 15],
+  free: [1, 25],
+};
 
 export default {
   id: 'letter-gap',
@@ -36,18 +41,28 @@ export default {
   requiresSpecialInput: false,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Trouvez l\'écart de positions entre les deux lettres',
+    params: [
+      { id: 'amplitude', label: 'Écart', type: 'chips', def: 'free',
+        options: [{ v: 'small', l: '1-3' }, { v: 'medium', l: '4-8' }, { v: 'large', l: '9-15' }, { v: 'free', l: 'Libre' }] },
+      { id: 'zone', label: 'Zone', type: 'chips', def: 'all',
+        options: [{ v: 'am', l: 'A–M' }, { v: 'all', l: 'A–Z' }] },
+      { id: 'direction', label: 'Sens affiché', type: 'chips', def: 'mix',
+        options: [{ v: 'asc', l: 'Croissant' }, { v: 'desc', l: 'Décroissant' }, { v: 'mix', l: 'Mixte' }] },
+    ],
+  },
+
   getInputType() { return 'numeric'; },
 
-  generate(difficulty) {
-    // Par niveau : amplitude de l'écart + zone de l'alphabet autorisée
-    let minGap, maxGap, zoneMax;
-    if (difficulty === 1)      { minGap = 1; maxGap = 3;  zoneMax = 12; } // A-M, petits écarts
-    else if (difficulty === 2) { minGap = 1; maxGap = 5;  zoneMax = 25; } // tout l'alphabet
-    else if (difficulty === 3) { minGap = 3; maxGap = 8;  zoneMax = 25; }
-    else if (difficulty === 4) { minGap = 5; maxGap = 15; zoneMax = 25; }
-    else                       { minGap = 1; maxGap = 25; zoneMax = 25; } // écart libre
+  generate(params) {
+    const [minGap, maxGap] = AMPLITUDES[params.amplitude] ?? AMPLITUDES.free;
+    const zoneMax = params.zone === 'am' ? 12 : 25;
+    const ascending = params.direction === 'asc' ? true
+      : params.direction === 'desc' ? false
+      : Math.random() < 0.5;
 
-    const { first, second, gap, ascending } = makeGap(minGap, maxGap, zoneMax);
+    const { first, second, gap } = makeGap(minGap, maxGap, zoneMax, ascending);
 
     return {
       question: `${first}   →   ${second}`,

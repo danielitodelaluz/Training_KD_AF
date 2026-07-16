@@ -450,7 +450,6 @@ export default {
           correct: true,
           partial: false,
           time_ms: ms,
-          difficulty,
           opType: q.type,
         });
         fbEl.textContent = `✓ ${(ms / 1000).toFixed(2)}s`;

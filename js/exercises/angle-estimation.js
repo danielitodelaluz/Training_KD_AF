@@ -2,8 +2,6 @@
 
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-const TOLERANCES = [10, 7, 5, 3, 2]; // ±degrees by difficulty
-
 function drawAngle(canvas, θDeg) {
   const W = 220, H = 180;
   canvas.width = W;
@@ -65,19 +63,26 @@ export default {
   isSequential: false,
   requiresSpecialInput: false,
   numpadExtras: [],
+
+  configSpec: {
+    intro: 'Estimez l\'angle affiché en degrés',
+    params: [
+      { id: 'tol', label: 'Tolérance', type: 'chips', def: 7,
+        options: [{ v: 10, l: '±10°' }, { v: 7, l: '±7°' }, { v: 5, l: '±5°' }, { v: 3, l: '±3°' }] },
+      { id: 'angles', label: 'Angles', type: 'chips', def: 'any',
+        options: [{ v: 'mult15', l: 'Multiples de 15°' }, { v: 'mult5', l: 'Multiples de 5°' }, { v: 'any', l: 'Quelconques' }] },
+    ],
+  },
+
   getInputType() { return 'numeric'; },
 
-  generate(difficulty) {
+  generate(params) {
+    const tol = params.tol ?? 7;
     let θ;
-    if (difficulty === 1) {
-      θ = rand(1, 11) * 15; // 15, 30, … 165
-    } else if (difficulty === 2) {
-      θ = rand(2, 34) * 5;  // 10, 15, … 170
-    } else {
-      θ = rand(10, 170);
-    }
+    if (params.angles === 'mult15') θ = rand(1, 11) * 15;      // 15 … 165
+    else if (params.angles === 'mult5') θ = rand(2, 34) * 5;   // 10 … 170
+    else θ = rand(10, 170);
 
-    const tol = TOLERANCES[difficulty - 1];
     // Encode tolerance in answer: "θ|tol"
     return {
       question: "Estimez cet angle en degrés",

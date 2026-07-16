@@ -50,12 +50,19 @@ const DIR_NAMES = {
   '-1,1': 'diagonale ↗', '-1,-1': 'diagonale ↖',
 };
 
-const CONFIGS = {
-  1: { rows: 5, cols: 5, pool: WORDS_4, directions: [DIR_H], cellSize: 40 },
-  2: { rows: 6, cols: 6, pool: [...WORDS_4, ...WORDS_5], directions: [DIR_H, DIR_V], cellSize: 36 },
-  3: { rows: 7, cols: 7, pool: [...WORDS_5, ...WORDS_6], directions: [DIR_H, DIR_V, DIR_DR, DIR_DL], cellSize: 30 },
-  4: { rows: 7, cols: 7, pool: WORDS_6, directions: [DIR_H, DIR_V, DIR_DR, DIR_DL, DIR_HL, DIR_VU], cellSize: 30 },
-  5: { rows: 8, cols: 7, pool: WORDS_7, directions: [DIR_H, DIR_V, DIR_DR, DIR_DL, DIR_HL, DIR_VU, DIR_UR, DIR_UL], cellSize: 28 },
+// Grilles et pools par taille choisie
+const GRID_SETUPS = {
+  5: { rows: 5, cols: 5, pool: WORDS_4, cellSize: 40 },
+  6: { rows: 6, cols: 6, pool: [...WORDS_4, ...WORDS_5], cellSize: 36 },
+  7: { rows: 7, cols: 7, pool: [...WORDS_5, ...WORDS_6], cellSize: 30 },
+  8: { rows: 8, cols: 7, pool: [...WORDS_6, ...WORDS_7], cellSize: 28 },
+};
+
+// Jeux de directions par réglage
+const DIR_SETS = {
+  simple: [DIR_H, DIR_V],
+  diag: [DIR_H, DIR_V, DIR_DR, DIR_DL],
+  all: [DIR_H, DIR_V, DIR_DR, DIR_DL, DIR_HL, DIR_VU, DIR_UR, DIR_UL],
 };
 
 function createGrid(rows, cols) {
@@ -131,11 +138,23 @@ export default {
   requiresSpecialInput: true,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Trouvez lequel des trois mots est caché dans la grille',
+    params: [
+      { id: 'grid', label: 'Grille', type: 'chips', def: 6,
+        options: [{ v: 5, l: '5×5' }, { v: 6, l: '6×6' }, { v: 7, l: '7×7' }, { v: 8, l: '8×7' }] },
+      { id: 'dirs', label: 'Directions', type: 'chips', def: 'simple',
+        note: 'Inversées = les mots peuvent aussi se lire à l\'envers',
+        options: [{ v: 'simple', l: '→ ↓' }, { v: 'diag', l: '+ Diagonales' }, { v: 'all', l: '+ Inversées' }] },
+    ],
+  },
+
   getInputType() { return 'choice'; },
 
-  generate(difficulty) {
-    const cfg = CONFIGS[Math.min(difficulty, 5)];
-    const { rows, cols, pool, directions, cellSize } = cfg;
+  generate(params) {
+    const setup = GRID_SETUPS[params.grid] ?? GRID_SETUPS[6];
+    const directions = DIR_SETS[params.dirs] ?? DIR_SETS.simple;
+    const { rows, cols, pool, cellSize } = setup;
 
     // Pick 3 words of similar length
     const shuffledPool = shuffle(pool);

@@ -21,83 +21,61 @@ export default {
   requiresSpecialInput: true,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Avancez ou reculez dans l\'alphabet à partir d\'une lettre',
+    params: [
+      { id: 'sens', label: 'Sens', type: 'chips', def: 'mix',
+        options: [{ v: 'plus', l: '+ Avancer' }, { v: 'minus', l: '− Reculer' }, { v: 'mix', l: 'Mixte' }] },
+      { id: 'taille', label: 'Sauts de', type: 'chips', def: 5,
+        options: [{ v: 3, l: '1-3' }, { v: 5, l: '1-5' }, { v: 8, l: '1-8' }] },
+      { id: 'chaine', label: 'Enchaînement', type: 'chips', def: 1,
+        options: [{ v: 1, l: '1 saut' }, { v: 2, l: '2 sauts' }] },
+      { id: 'wrap', label: 'Passage Z↔A', type: 'chips', def: 'off',
+        note: 'Avec : Z + 2 = B (l\'alphabet boucle)',
+        options: [{ v: 'off', l: 'Sans' }, { v: 'on', l: 'Avec' }] },
+    ],
+  },
+
   getInputType() { return 'choice'; },
 
-  generate(difficulty) {
-    let question, answer, extraData;
+  generate(params) {
+    const maxJump = params.taille ?? 5;
+    const nSteps = params.chaine ?? 1;
+    const wrap = params.wrap === 'on';
+    const signFor = () =>
+      params.sens === 'plus' ? '+' : params.sens === 'minus' ? '-' : pick(['+', '-']);
 
-    if (difficulty === 1) {
-      // Start letter A-V (idx 0-21), jump +1 to +3, no wrap needed (max V+3 = Y)
-      const startIdx = rand(0, 21);
-      const jump = rand(1, 3);
-      const start = letterAt(startIdx);
-      const end = letterAt(startIdx + jump);
-      question = `${start} + ${jump} = ?`;
-      answer = end;
-      extraData = { start, jump, sign: '+', steps: [{ sign: '+', n: jump }] };
-
-    } else if (difficulty === 2) {
-      // Start letter A-T (idx 0-19), jump +1 to +5, may wrap Z→A
-      const startIdx = rand(0, 19);
-      const jump = rand(1, 5);
-      const start = letterAt(startIdx);
-      const end = letterAt(startIdx + jump);
-      question = `${start} + ${jump} = ?`;
-      answer = end;
-      extraData = { start, jump, sign: '+', steps: [{ sign: '+', n: jump }] };
-
-    } else if (difficulty === 3) {
-      // Jump +1 to +8 or small negative -1 to -3, wrap both ways
-      const startIdx = rand(0, 25);
-      const goNeg = Math.random() < 0.35;
-      const jump = goNeg ? rand(1, 3) : rand(1, 8);
-      const sign = goNeg ? '-' : '+';
-      const start = letterAt(startIdx);
-      const endIdx = goNeg ? startIdx - jump : startIdx + jump;
-      const end = letterAt(endIdx);
-      const opStr = goNeg ? `− ${jump}` : `+ ${jump}`;
-      question = `${start} ${opStr} = ?`;
-      answer = end;
-      extraData = { start, jump, sign, steps: [{ sign, n: jump }] };
-
-    } else if (difficulty === 4) {
-      // Negative jumps -1 to -6, wrap
-      const startIdx = rand(0, 25);
-      const jump = rand(1, 6);
-      const start = letterAt(startIdx);
-      const end = letterAt(startIdx - jump);
-      question = `${start} − ${jump} = ?`;
-      answer = end;
-      extraData = { start, jump, sign: '-', steps: [{ sign: '-', n: jump }] };
-
-    } else {
-      // D5: two chained jumps e.g. "M + 4 − 2 = ?"
-      const startIdx = rand(0, 25);
-      const jump1 = rand(1, 6);
-      const sign1 = pick(['+', '-']);
-      const jump2 = rand(1, 5);
-      const sign2 = pick(['+', '-']);
-
-      const mid = sign1 === '+' ? startIdx + jump1 : startIdx - jump1;
-      const endIdx = sign2 === '+' ? mid + jump2 : mid - jump2;
-
-      const start = letterAt(startIdx);
-      const end = letterAt(endIdx);
-
-      const op1Str = sign1 === '+' ? `+ ${jump1}` : `− ${jump1}`;
-      const op2Str = sign2 === '+' ? `+ ${jump2}` : `− ${jump2}`;
-      question = `${start} ${op1Str} ${op2Str} = ?`;
-      answer = end;
-      extraData = {
-        start,
-        steps: [
-          { sign: sign1, n: jump1 },
-          { sign: sign2, n: jump2 },
-        ],
-      };
+    // Tire des étapes ; sans wrap, on re-tire tant qu'un point du parcours
+    // sortirait de A..Z.
+    let startIdx, steps, endIdx;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      startIdx = rand(0, 25);
+      steps = Array.from({ length: nSteps }, () => ({ sign: signFor(), n: rand(1, maxJump) }));
+      let idx = startIdx;
+      let ok = true;
+      for (const s of steps) {
+        idx = s.sign === '+' ? idx + s.n : idx - s.n;
+        if (!wrap && (idx < 0 || idx > 25)) { ok = false; break; }
+      }
+      if (ok) { endIdx = idx; break; }
+      endIdx = undefined;
+    }
+    if (endIdx === undefined) {
+      // Repli sûr : un seul saut positif sans sortie de zone
+      startIdx = rand(0, 20);
+      steps = [{ sign: '+', n: rand(1, Math.min(maxJump, 25 - startIdx)) }];
+      endIdx = startIdx + steps[0].n;
     }
 
-    return { question, answer, extraData };
+    const start = letterAt(startIdx);
+    const end = letterAt(endIdx);
+    const opsStr = steps.map((s) => `${s.sign === '+' ? '+' : '−'} ${s.n}`).join(' ');
+
+    return {
+      question: `${start} ${opsStr} = ?`,
+      answer: end,
+      extraData: { start, steps },
+    };
   },
 
   validate(userAnswer, correctAnswer) {

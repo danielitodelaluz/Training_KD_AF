@@ -34,87 +34,60 @@ export default {
   requiresSpecialInput: false,
   numpadExtras: ['dot'],
 
+  configSpec: {
+    intro: 'Conversions entre fractions, décimales et pourcentages',
+    params: [
+      { id: 'directions', label: 'Conversions', type: 'multi', def: ['frac-to-dec', 'frac-to-pct'],
+        options: [
+          { v: 'frac-to-dec', l: '½ → 0,5' },
+          { v: 'dec-to-frac', l: '0,5 → ½' },
+          { v: 'frac-to-pct', l: '½ → 50%' },
+          { v: 'pct-to-dec', l: '50% → 0,5' },
+        ] },
+      { id: 'set', label: 'Fractions', type: 'chips', def: 'all',
+        options: [{ v: 'simple', l: 'Simples (½ ¼ …)' }, { v: 'all', l: 'Toutes' }] },
+    ],
+  },
+
   getInputType() { return 'numeric'; },
 
-  generate(difficulty) {
-    let direction, frac, question, answer, display, extraData;
+  generate(params) {
+    const dirs = params.directions && params.directions.length
+      ? params.directions
+      : ['frac-to-dec', 'frac-to-pct'];
+    const direction = pick(dirs);
+    const frac = pick(params.set === 'simple' ? EASY_FRACTIONS : ALL_FRACTIONS);
 
-    if (difficulty === 1) {
-      // Fraction → decimal (simple fractions)
-      frac = pick(SIMPLE_FRACTIONS);
-      direction = 'frac-to-dec';
+    let question, answer, display, extraData;
+
+    if (direction === 'frac-to-dec') {
       const dec = toDecimal(frac);
       question = `${frac[0]}/${frac[1]} = ?`;
       answer = String(dec);
       display = { type: 'fraction', num: frac[0], den: frac[1] };
       extraData = { direction, answerType: 'decimal' };
 
-    } else if (difficulty === 2) {
-      // Decimal → fraction (show decimal and denominator, user types numerator)
-      frac = pick(EASY_FRACTIONS);
-      direction = 'dec-to-frac';
+    } else if (direction === 'dec-to-frac') {
       const dec = toDecimal(frac);
       question = `${dec} = ? / ${frac[1]}`;
       answer = String(frac[0]);
       display = { type: 'decimal-to-frac', decimal: dec, den: frac[1] };
-      extraData = { direction, answerType: 'integer' };
+      extraData = { direction, answerType: 'integer', den: frac[1] };
 
-    } else if (difficulty === 3) {
-      // Fraction → percent
-      frac = pick(ALL_FRACTIONS);
-      direction = 'frac-to-pct';
+    } else if (direction === 'frac-to-pct') {
       const pct = toPercent(frac);
       question = `${frac[0]}/${frac[1]} = ? %`;
       answer = String(pct);
       display = { type: 'fraction', num: frac[0], den: frac[1], suffix: '= ? %' };
       extraData = { direction, answerType: 'integer' };
 
-    } else if (difficulty === 4) {
-      // Percent → decimal
-      frac = pick(ALL_FRACTIONS);
-      direction = 'pct-to-dec';
+    } else {
       const pct = toPercent(frac);
       const dec = toDecimal(frac);
       question = `${pct} % = ?`;
       answer = String(dec);
       display = { type: 'text', text: `${pct} % = ?` };
       extraData = { direction, answerType: 'decimal' };
-
-    } else {
-      // D5: mix of all directions
-      const directions = ['frac-to-dec', 'dec-to-frac', 'frac-to-pct', 'pct-to-dec'];
-      direction = pick(directions);
-      frac = pick(ALL_FRACTIONS);
-
-      if (direction === 'frac-to-dec') {
-        const dec = toDecimal(frac);
-        question = `${frac[0]}/${frac[1]} = ?`;
-        answer = String(dec);
-        display = { type: 'fraction', num: frac[0], den: frac[1] };
-        extraData = { direction, answerType: 'decimal' };
-
-      } else if (direction === 'dec-to-frac') {
-        const dec = toDecimal(frac);
-        question = `${dec} = ? / ${frac[1]}`;
-        answer = String(frac[0]);
-        display = { type: 'decimal-to-frac', decimal: dec, den: frac[1] };
-        extraData = { direction, answerType: 'integer' };
-
-      } else if (direction === 'frac-to-pct') {
-        const pct = toPercent(frac);
-        question = `${frac[0]}/${frac[1]} = ? %`;
-        answer = String(pct);
-        display = { type: 'fraction', num: frac[0], den: frac[1], suffix: '= ? %' };
-        extraData = { direction, answerType: 'integer' };
-
-      } else {
-        const pct = toPercent(frac);
-        const dec = toDecimal(frac);
-        question = `${pct} % = ?`;
-        answer = String(dec);
-        display = { type: 'text', text: `${pct} % = ?` };
-        extraData = { direction, answerType: 'decimal' };
-      }
     }
 
     return { question, answer, display, extraData };

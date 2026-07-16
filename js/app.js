@@ -3,13 +3,13 @@ import { Storage } from './storage.js';
 import { Engine } from './engine.js';
 import { Numpad, Timer, Feedback, Toast, buildChoiceButtons, buildLetterGrid, drawLineChart, drawBarChart, drawSparkline, setProgressBar } from './ui.js';
 import { registry } from './exercises/registry.js';
+import { buildConfigScreen } from './exercise-config.js';
 
 // ============================================================
 // ÉTAT GLOBAL
 // ============================================================
 const AppState = {
   pendingConfig: null,
-  mixedMode: false,
   soloExerciseId: null,
 };
 
@@ -63,7 +63,6 @@ const HomeScreen = {
     grid.innerHTML = '';
 
     const categories = [
-      { key: 'aviation', label: 'Aéronautique' },
       { key: 'numerique', label: 'Calcul & Numérique' },
       { key: 'lettres', label: 'Lettres & Alphabet' },
       { key: 'memoire', label: 'Mémoire de travail' },
@@ -88,25 +87,18 @@ const HomeScreen = {
         const avgScore = lastSessions.length
           ? Math.round(lastSessions.reduce((a, s) => a + (s.summary?.score ?? 0), 0) / lastSessions.length)
           : null;
-        const difficulty = Storage.getDifficulty(ex.id);
 
-        const selected = AppState.mixedMode
-          ? settings.selectedExercises.includes(ex.id)
-          : AppState.soloExerciseId === ex.id;
+        const selected = AppState.soloExerciseId === ex.id;
 
         const card = document.createElement('div');
-        card.className = 'exercise-card' +
-          (AppState.mixedMode ? ' mixed-mode' : '') +
-          (selected ? (AppState.mixedMode ? ' selected' : ' solo-selected') : '');
+        card.className = 'exercise-card' + (selected ? ' solo-selected' : '');
         card.dataset.exerciseId = ex.id;
         card.innerHTML = `
-          <div class="card-checkbox"></div>
           <span class="card-icon">${ex.icon}</span>
           <div class="card-name">${ex.name}</div>
           <div class="card-perf">
             ${avgScore !== null ? `<span>Score: <b>${avgScore}</b></span>` : '<span>Jamais joué</span>'}
           </div>
-          <div class="card-diff">N${difficulty}</div>
         `;
         card.addEventListener('click', () => this._onCardClick(ex.id));
         catGrid.appendChild(card);
@@ -121,16 +113,7 @@ const HomeScreen = {
   },
 
   _onCardClick(exerciseId) {
-    const settings = Storage.getSettings();
-
-    if (AppState.mixedMode) {
-      const sel = new Set(settings.selectedExercises);
-      if (sel.has(exerciseId)) sel.delete(exerciseId);
-      else sel.add(exerciseId);
-      Storage.saveSettings({ selectedExercises: [...sel] });
-    } else {
-      AppState.soloExerciseId = exerciseId;
-    }
+    AppState.soloExerciseId = exerciseId;
     this._render();
   },
 
@@ -161,55 +144,23 @@ const HomeScreen = {
       el.classList.toggle('hidden', isTimed);
     });
 
-    // Difficulty chips
-    document.querySelectorAll('[data-difficulty]').forEach((el) => {
-      el.classList.toggle('active', el.dataset.difficulty === String(settings.startDifficulty));
-    });
-
-    // Mixed mode hint
-    const hint = document.getElementById('mixed-mode-hint');
-    if (hint) {
-      hint.classList.toggle('visible', AppState.mixedMode);
-      if (AppState.mixedMode) {
-        const sel = settings.selectedExercises.length;
-        hint.textContent = sel
-          ? `${sel} exercice${sel > 1 ? 's' : ''} sélectionné${sel > 1 ? 's' : ''} — mode interleaving`
-          : 'Cochez des exercices pour le mode mixte';
-      }
-    }
-
-    // Mixed mode toggle
-    const mixBtn = document.getElementById('btn-mixed-toggle');
-    if (mixBtn) mixBtn.textContent = AppState.mixedMode ? '🔀 Mixte ✓' : '🔀 Mixte';
-    if (mixBtn) mixBtn.classList.toggle('active', AppState.mixedMode);
   },
 
   start() {
     const settings = Storage.getSettings();
 
-    let exerciseIds;
-    if (AppState.mixedMode) {
-      exerciseIds = settings.selectedExercises;
-      if (!exerciseIds.length) {
-        Toast.show('Sélectionnez au moins un exercice', 'error');
-        return;
-      }
-    } else {
-      if (!AppState.soloExerciseId) {
-        Toast.show('Choisissez un exercice', 'error');
-        return;
-      }
-      exerciseIds = [AppState.soloExerciseId];
+    if (!AppState.soloExerciseId) {
+      Toast.show('Choisissez un exercice', 'error');
+      return;
     }
 
     const duration_ms = settings.duration * 60 * 1000;
 
     AppState.pendingConfig = {
-      exerciseIds,
+      exerciseId: AppState.soloExerciseId,
       mode: settings.sessionMode,
       duration_ms,
       itemCount: settings.itemCount,
-      startDifficulty: settings.startDifficulty,
       registry,
     };
 
@@ -299,10 +250,9 @@ const ExerciseScreen = {
 
     Engine.onSequentialStart = (exercise) => {
       // UI setup only — engine.js calls startSequence() separately
-      this._teardownKeyboard(); // évite les fuites de listeners en mode mixte
+      this._teardownKeyboard(); // évite les fuites de listeners
       Feedback.hide();
-      const level = Engine.getCurrentDifficulty(exercise.id);
-      document.getElementById('exercise-name-display').textContent = `${exercise.name} · N${level}`;
+      document.getElementById('exercise-name-display').textContent = exercise.name;
       document.getElementById('exercise-icon-display').textContent = exercise.icon;
       Numpad.hide();
       this._specialInputArea.innerHTML = '';
@@ -315,6 +265,28 @@ const ExerciseScreen = {
       location.hash = '#summary';
     };
 
+    // En-tête + timer neutres pendant la configuration
+    const ex = registry.find((e) => e.id === AppState.pendingConfig.exerciseId);
+    if (!ex) { location.hash = '#home'; return; }
+    document.getElementById('exercise-name-display').textContent = ex.name;
+    document.getElementById('exercise-icon-display').textContent = ex.icon;
+    Timer.clear();
+    setProgressBar(document.getElementById('session-progress-fill'), 0);
+
+    // Écran de réglages propre à l'exercice (sauf s'il gère le sien, comme
+    // le calcul mental, ou n'a aucun critère configurable).
+    if (ex.configSpec) {
+      Numpad.hide();
+      this._specialInputArea.classList.add('hidden');
+      this._specialInputArea.innerHTML = '';
+      Feedback.hide();
+      buildConfigScreen(this._questionZone, ex, (params) => this._begin(params));
+    } else {
+      this._begin({});
+    }
+  },
+
+  _begin(params) {
     // Setup numpad
     Numpad.init(this._numpadArea);
     Numpad.reset();
@@ -326,9 +298,8 @@ const ExerciseScreen = {
     } else {
       Timer.setCount(0, AppState.pendingConfig.itemCount);
     }
-    setProgressBar(document.getElementById('session-progress-fill'), 0);
 
-    Engine.start(AppState.pendingConfig);
+    Engine.start({ ...AppState.pendingConfig, params });
   },
 
   // Garantit la présence de #question-content (recréé après un exercice séquentiel
@@ -346,9 +317,7 @@ const ExerciseScreen = {
   },
 
   _renderItem(exercise, item) {
-    // Update header (nom + niveau adaptatif courant)
-    const level = Engine.getCurrentDifficulty(exercise.id);
-    document.getElementById('exercise-name-display').textContent = `${exercise.name} · N${level}`;
+    document.getElementById('exercise-name-display').textContent = exercise.name;
     document.getElementById('exercise-icon-display').textContent = exercise.icon;
 
     // Teardown previous keyboard handler
@@ -426,8 +395,7 @@ const SummaryScreen = {
 
     // Score
     document.getElementById('summary-score').textContent = summary.score;
-    document.getElementById('summary-exercise-name').textContent =
-      exerciseId === 'mixed' ? 'Session mixte' : (ex?.name ?? exerciseId);
+    document.getElementById('summary-exercise-name').textContent = ex?.name ?? exerciseId;
 
     // Stats grid
     document.getElementById('stat-accuracy').textContent = `${Math.round(summary.accuracy * 100)}%`;
@@ -450,10 +418,6 @@ const SummaryScreen = {
     if (!weaks.length) {
       weakList.innerHTML = '<p class="text-muted" style="font-size:0.8rem;padding:8px 0">Continuez pour voir vos points faibles !</p>';
     }
-
-    // Difficulty evolution
-    const diffEl = document.getElementById('stat-difficulty');
-    if (diffEl) diffEl.textContent = `N${summary.difficulty_start}→N${summary.difficulty_end}`;
 
     // Error review with hints (especially useful in timed mode)
     const errorItems = record.items.filter(i => !i.correct);
@@ -830,11 +794,6 @@ function bindAll() {
   // --- HOME ---
   document.getElementById('btn-start')?.addEventListener('click', () => HomeScreen.start());
   document.getElementById('btn-progress')?.addEventListener('click', () => { location.hash = '#progress'; });
-  document.getElementById('btn-mixed-toggle')?.addEventListener('click', () => {
-    AppState.mixedMode = !AppState.mixedMode;
-    if (!AppState.mixedMode) AppState.soloExerciseId = null;
-    HomeScreen._render();
-  });
 
   // Session mode
   document.querySelectorAll('[data-session-mode]').forEach((el) => {
@@ -856,14 +815,6 @@ function bindAll() {
   document.querySelectorAll('[data-item-count]').forEach((el) => {
     el.addEventListener('click', () => {
       Storage.saveSettings({ itemCount: parseInt(el.dataset.itemCount) });
-      HomeScreen._refreshConfigChips(Storage.getSettings());
-    });
-  });
-
-  // Difficulty
-  document.querySelectorAll('[data-difficulty]').forEach((el) => {
-    el.addEventListener('click', () => {
-      Storage.saveSettings({ startDifficulty: el.dataset.difficulty === 'adaptive' ? 'adaptive' : parseInt(el.dataset.difficulty) });
       HomeScreen._refreshConfigChips(Storage.getSettings());
     });
   });

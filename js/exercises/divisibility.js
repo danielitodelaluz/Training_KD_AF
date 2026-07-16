@@ -20,54 +20,33 @@ export default {
   requiresSpecialInput: true,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Ce nombre est-il divisible par… ?',
+    params: [
+      { id: 'divisors', label: 'Diviseurs', type: 'multi', def: [2, 3, 5],
+        options: DIVISORS.map((d) => ({ v: d, l: String(d) })) },
+      { id: 'digits', label: 'Taille', type: 'chips', def: 3,
+        options: [{ v: 3, l: '3 chiffres' }, { v: 4, l: '4 chiffres' }, { v: 5, l: '5 chiffres' }] },
+    ],
+  },
+
   getInputType() { return 'choice'; },
 
-  generate(difficulty) {
-    let n, divisor, isDivisible;
+  generate(params) {
+    const divisors = params.divisors && params.divisors.length ? params.divisors : DIVISORS;
+    const digits = params.digits ?? 3;
+    const lo = 10 ** (digits - 1);
+    const hi = 10 ** digits - 1;
 
-    if (difficulty === 1) {
-      // 3-digit number, single divisor
-      divisor = pick(DIVISORS);
-      // 50% chance of being divisible
-      if (Math.random() < 0.5) {
-        // Pick a multiple of divisor in [100, 999]
-        const minMult = Math.ceil(100 / divisor);
-        const maxMult = Math.floor(999 / divisor);
-        n = pick([...Array(maxMult - minMult + 1)].map((_, i) => (minMult + i) * divisor));
-        isDivisible = true;
-      } else {
-        do { n = rand(100, 999); } while (n % divisor === 0);
-        isDivisible = false;
-      }
-
-    } else if (difficulty === 2 || difficulty === 3) {
-      // 4-digit number, single divisor
-      divisor = pick(DIVISORS);
-      if (Math.random() < 0.5) {
-        const minMult = Math.ceil(1000 / divisor);
-        const maxMult = Math.floor(9999 / divisor);
-        n = pick([...Array(Math.min(maxMult - minMult + 1, 500))].map((_, i) => (minMult + i) * divisor));
-        isDivisible = true;
-      } else {
-        do { n = rand(1000, 9999); } while (n % divisor === 0);
-        isDivisible = false;
-      }
-
+    const divisor = pick(divisors);
+    let n;
+    if (Math.random() < 0.5) {
+      // Multiple garanti du diviseur dans la plage
+      const minMult = Math.ceil(lo / divisor);
+      const maxMult = Math.floor(hi / divisor);
+      n = rand(minMult, maxMult) * divisor;
     } else {
-      // D4-D5: 4-5 digit number, pick one divisor (yes/no style)
-      const digits = difficulty === 4 ? rand(1000, 9999) : rand(10000, 99999);
-      divisor = pick(DIVISORS);
-      if (Math.random() < 0.5) {
-        const minMult = Math.ceil((difficulty === 4 ? 1000 : 10000) / divisor);
-        const maxMult = Math.floor((difficulty === 4 ? 9999 : 99999) / divisor);
-        n = pick([...Array(Math.min(maxMult - minMult + 1, 500))].map((_, i) => (minMult + i) * divisor));
-        isDivisible = true;
-      } else {
-        const lo = difficulty === 4 ? 1000 : 10000;
-        const hi = difficulty === 4 ? 9999 : 99999;
-        do { n = rand(lo, hi); } while (n % divisor === 0);
-        isDivisible = false;
-      }
+      do { n = rand(lo, hi); } while (n % divisor === 0);
     }
 
     const answer = n % divisor === 0 ? 'oui' : 'non';

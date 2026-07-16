@@ -23,62 +23,40 @@ export default {
   requiresSpecialInput: false, // overridden per-item in renderQuestion based on direction
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Connaître la position de chaque lettre par cœur',
+    params: [
+      { id: 'direction', label: 'Sens', type: 'chips', def: 'mix',
+        options: [{ v: 'l2r', l: 'Lettre → rang' }, { v: 'r2l', l: 'Rang → lettre' }, { v: 'mix', l: 'Mixte' }] },
+      { id: 'zone', label: 'Zone', type: 'chips', def: 'all',
+        options: [{ v: 'am', l: 'A–M' }, { v: 'nz', l: 'N–Z' }, { v: 'all', l: 'Tout' }] },
+    ],
+  },
+
   getInputType() { return 'numeric'; }, // default; letter-direction uses special grid
 
-  generate(difficulty) {
-    let question, answer, extraData;
+  generate(params) {
+    const zone = params.zone ?? 'all';
+    const [lo, hi] = zone === 'am' ? [1, 13] : zone === 'nz' ? [14, 26] : [1, 26];
+    const direction = params.direction === 'mix' || !params.direction
+      ? (Math.random() < 0.5 ? 'l2r' : 'r2l')
+      : params.direction;
 
-    if (difficulty === 1) {
-      // Letter → rank, only first 13 letters (A-M)
-      const letter = ALPHABET[rand(0, 12)];
-      const rank = letterToRank(letter);
-      question = `Lettre ${letter} → rang ?`;
-      answer = String(rank);
-      extraData = { direction: 'letter-to-rank', letter, rank };
+    const rank = rand(lo, hi);
+    const letter = rankToLetter(rank);
 
-    } else if (difficulty === 2) {
-      // Letter → rank, all 26 letters
-      const letter = ALPHABET[rand(0, 25)];
-      const rank = letterToRank(letter);
-      question = `Lettre ${letter} → rang ?`;
-      answer = String(rank);
-      extraData = { direction: 'letter-to-rank', letter, rank };
-
-    } else if (difficulty === 3) {
-      // Rank → letter (first 13)
-      const rank = rand(1, 13);
-      const letter = rankToLetter(rank);
-      question = `Rang ${rank} → lettre ?`;
-      answer = letter;
-      extraData = { direction: 'rank-to-letter', letter, rank };
-
-    } else if (difficulty === 4) {
-      // Rank → letter (all 26)
-      const rank = rand(1, 26);
-      const letter = rankToLetter(rank);
-      question = `Rang ${rank} → lettre ?`;
-      answer = letter;
-      extraData = { direction: 'rank-to-letter', letter, rank };
-
-    } else {
-      // D5: mix both directions across all letters
-      const direction = Math.random() < 0.5 ? 'letter-to-rank' : 'rank-to-letter';
-      if (direction === 'letter-to-rank') {
-        const letter = ALPHABET[rand(0, 25)];
-        const rank = letterToRank(letter);
-        question = `Lettre ${letter} → rang ?`;
-        answer = String(rank);
-        extraData = { direction, letter, rank };
-      } else {
-        const rank = rand(1, 26);
-        const letter = rankToLetter(rank);
-        question = `Rang ${rank} → lettre ?`;
-        answer = letter;
-        extraData = { direction, letter, rank };
-      }
+    if (direction === 'l2r') {
+      return {
+        question: `Lettre ${letter} → rang ?`,
+        answer: String(rank),
+        extraData: { direction: 'letter-to-rank', letter, rank },
+      };
     }
-
-    return { question, answer, extraData };
+    return {
+      question: `Rang ${rank} → lettre ?`,
+      answer: letter,
+      extraData: { direction: 'rank-to-letter', letter, rank },
+    };
   },
 
   validate(userAnswer, correctAnswer) {

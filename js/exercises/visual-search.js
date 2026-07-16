@@ -16,13 +16,12 @@ const SYMBOL_MAP = {
 
 const TARGETS = Object.keys(SYMBOL_MAP);
 
-// Grid sizes by difficulty
-const GRID_CONFIGS = {
-  1: { total: 4, cols: 2 },
-  2: { total: 9, cols: 3 },
-  3: { total: 12, cols: 4 },
-  4: { total: 16, cols: 4 },
-  5: { total: 25, cols: 5 },
+// Tailles de grille par réglage
+const GRID_SIZES = {
+  4: { total: 4, cols: 2 },
+  9: { total: 9, cols: 3 },
+  16: { total: 16, cols: 4 },
+  25: { total: 25, cols: 5 },
 };
 
 export default {
@@ -34,33 +33,40 @@ export default {
   requiresSpecialInput: true,
   numpadExtras: [],
 
+  configSpec: {
+    intro: 'Repérez la cible parmi les distracteurs',
+    params: [
+      { id: 'size', label: 'Grille', type: 'chips', def: 9,
+        options: [{ v: 4, l: '4' }, { v: 9, l: '9' }, { v: 16, l: '16' }, { v: 25, l: '25' }] },
+      { id: 'similar', label: 'Distracteurs', type: 'chips', def: 'similar',
+        note: 'Ressemblants = cible plus dure à repérer',
+        options: [{ v: 'mixed', l: 'Variés' }, { v: 'similar', l: 'Ressemblants' }] },
+    ],
+  },
+
   getInputType() { return 'click'; },
 
-  generate(difficulty) {
-    const cfg = GRID_CONFIGS[difficulty] || GRID_CONFIGS[1];
-    const { total } = cfg;
+  generate(params) {
+    const cfg = GRID_SIZES[params.size] ?? GRID_SIZES[9];
+    const { total, cols } = cfg;
 
     const target = pick(TARGETS);
-    const distractors = SYMBOL_MAP[target];
+    // "Ressemblants" : distracteurs proches de la cible ; "Variés" : n'importe
+    // quel symbole du jeu, cible mieux détachée.
+    const distractors = params.similar === 'mixed'
+      ? TARGETS.filter((t) => t !== target)
+      : SYMBOL_MAP[target];
 
-    // Place target at a random index
     const targetIndex = rand(0, total - 1);
-
-    // Build cells array
     const cells = [];
     for (let i = 0; i < total; i++) {
-      if (i === targetIndex) {
-        cells.push(target);
-      } else {
-        // Pick distractor (allow repeats)
-        cells.push(pick(distractors));
-      }
+      cells.push(i === targetIndex ? target : pick(distractors));
     }
 
     return {
       question: `Trouvez : ${target}`,
       answer: String(targetIndex),
-      extraData: { cells, targetIndex, target, cols: cfg.cols },
+      extraData: { cells, targetIndex, target, cols },
     };
   },
 
