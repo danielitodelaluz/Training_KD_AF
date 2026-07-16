@@ -1430,3 +1430,114 @@ button:focus-visible { border-radius: var(--radius-sm); }
   flex-wrap: wrap;
 }
 .cha-summary-btns .btn { flex: 1; min-width: 80px; font-size: 0.82rem; }
+
+/* === PROGRESSION — ANALYSE CALCUL MENTAL === */
+.mp-section { margin-bottom: 10px; }
+.mp-empty {
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 18px 14px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.mp-cfg-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.mp-cfg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card2);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 120ms, color 120ms, background 120ms;
+  touch-action: manipulation;
+  white-space: nowrap;
+}
+.mp-cfg-chip.active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--text);
+}
+.mp-cfg-count {
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.mp-cap {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.mp-cap b { color: var(--text); }
+
+.mp-hbars { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+.mp-hbar-row { display: flex; align-items: center; gap: 8px; }
+.mp-hbar-label {
+  flex: 0 0 92px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mp-hbar-track {
+  flex: 1;
+  height: 12px;
+  background: var(--bg-card2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mp-hbar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  min-width: 3px;
+  transition: width 300ms ease;
+}
+.mp-hbar-val {
+  flex: 0 0 auto;
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  min-width: 38px;
+  text-align: right;
+}
+
+.mp-numgrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+  margin-top: 4px;
+}
+.mp-numcell {
+  aspect-ratio: 1.4;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.mp-numcell.weak { border-color: var(--error); }
+.mp-numcell-n { font-size: 0.82rem; font-weight: 800; color: var(--text); }
+.mp-numcell-c { font-size: 0.62rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mp-numcell.weak .mp-numcell-c { color: #fca5a5; }

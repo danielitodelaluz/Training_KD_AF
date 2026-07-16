@@ -485,11 +485,69 @@ const SummaryScreen = {
 };
 
 // ============================================================
+// HELPERS — ANALYSE CALCUL MENTAL
+// ============================================================
+const MATH_ID = 'math-trainer';
+const MATH_OPS = ['+', '−', '+−', '×', '÷'];
+const OP_LABEL = { '+': 'Additions', '−': 'Soustractions', '+−': 'Add./Sous.', '×': 'Multiplications', '÷': 'Divisions' };
+const OP_COLOR = { '+': '#22c55e', '−': '#38bdf8', '+−': '#818cf8', '×': '#f59e0b', '÷': '#ef4444' };
+
+function mathDurLabel(ms) {
+  return ({ 30000: '30s', 60000: '1min', 120000: '2min', 300000: '5min' })[ms] || Math.round(ms / 1000) + 's';
+}
+function describeNumbers(nums) {
+  const key = [...nums].sort((a, b) => a - b).join(',');
+  const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i).join(',');
+  if (key === range(1, 10)) return '1-10';
+  if (key === range(11, 20)) return '11-20';
+  if (key === range(1, 20)) return 'Tout';
+  return nums.length + ' nb';
+}
+function cfgLabel(e) {
+  const target = e.mode === 'time' ? mathDurLabel(e.dur) : `${e.rounds}Q`;
+  return `${target} · ${(e.ops || []).join('')} · ${describeNumbers(e.numbers || [])}`;
+}
+// Nombres "configurés" (1-20) impliqués dans une question de calcul mental.
+function mathOperands(item) {
+  const op = item.opType;
+  const expr = String(item.question || '').replace('= ?', '').replace('=', '').trim();
+  let out = [];
+  if (op === '×') {
+    out = expr.split('×').map((s) => parseInt(s, 10));
+  } else if (op === '÷') {
+    const parts = expr.split('÷');
+    out = [parseInt(parts[1], 10), parseInt(item.correctAnswer, 10)];
+  } else {
+    out = expr.split(/[+−]/).map((s) => parseInt(s, 10));
+  }
+  return out.filter((v) => Number.isFinite(v) && v >= 1 && v <= 20);
+}
+function loadMathLog() {
+  try { return JSON.parse(localStorage.getItem('psy0_math_log')) || []; }
+  catch { return []; }
+}
+// Barres horizontales : rows = [{label, value, display, color}]
+function buildHBars(container, rows) {
+  const max = Math.max(...rows.map((r) => r.value), 1);
+  for (const r of rows) {
+    const row = document.createElement('div');
+    row.className = 'mp-hbar-row';
+    const pct = Math.round((r.value / max) * 100);
+    row.innerHTML = `
+      <span class="mp-hbar-label">${r.label}</span>
+      <span class="mp-hbar-track"><span class="mp-hbar-fill" style="width:${pct}%;background:${r.color || 'var(--accent)'}"></span></span>
+      <span class="mp-hbar-val">${r.display}</span>`;
+    container.appendChild(row);
+  }
+}
+
+// ============================================================
 // PROGRESS SCREEN
 // ============================================================
 const ProgressScreen = {
   _filterDays: 30,
   _filterExercise: 'all',
+  _mathSelSig: null,
 
   onEnter() {
     this._render();
@@ -529,10 +587,23 @@ const ProgressScreen = {
       banner.classList.add('hidden');
     }
 
-    // Global accuracy chart
+    // ---- Section Calcul mental (prioritaire) ----
+    const cutoffTs = this._filterDays === 0 ? 0 : Date.now() - this._filterDays * 86400000;
+    const mathItems = [];
+    for (const s of Storage.getSessions()) {
+      if (new Date(s.date).getTime() < cutoffTs) continue;
+      for (const it of (s.items || [])) {
+        if (it && MATH_OPS.includes(it.opType)) mathItems.push(it);
+      }
+    }
+    const mathLog = loadMathLog().filter((e) => (e.t || 0) >= cutoffTs);
+    const mathRoot = document.getElementById('math-progress');
+    if (mathRoot) this._renderMath(mathRoot, mathItems, mathLog);
+
+    // Global accuracy chart (exclut le calcul mental — précision toujours 100 %)
     const globalCanvas = document.getElementById('chart-global-accuracy');
     if (globalCanvas) {
-      const recentSessions = sessions.slice(-30);
+      const recentSessions = sessions.filter((s) => s.exerciseId !== MATH_ID).slice(-30);
       drawLineChart(
         globalCanvas,
         recentSessions.map((s) => Math.round(s.summary?.accuracy * 100 ?? 0)),
@@ -541,11 +612,12 @@ const ProgressScreen = {
       );
     }
 
-    // Per-exercise list
+    // Per-exercise list (le calcul mental a sa propre section détaillée)
     const list = document.getElementById('exercise-progress-list');
     list.innerHTML = '';
 
     for (const ex of registry) {
+      if (ex.id === MATH_ID) continue;
       const exSessions = sessions.filter((s) => s.exerciseId === ex.id).slice(-20);
       const lastScore = exSessions.length
         ? Math.round(exSessions[exSessions.length - 1].summary?.score ?? 0)
@@ -592,6 +664,156 @@ const ProgressScreen = {
         drawSparkline(canvas, values);
       });
     });
+  },
+
+  // Analyse détaillée du calcul mental (configs, couverture, vitesse)
+  _renderMath(root, items, log) {
+    root.innerHTML = '';
+    if (!items.length && !log.length) {
+      root.innerHTML = `<div class="mp-empty">🔢 <b>Calcul mental</b><br>Joue une session pour débloquer ton analyse détaillée.</div>`;
+      return;
+    }
+
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    title.style.marginTop = '4px';
+    title.textContent = '🔢 Calcul mental — analyse';
+    root.appendChild(title);
+
+    // ---- 1. Configurations les plus jouées + progression ----
+    if (log.length) {
+      const bySig = {};
+      for (const e of log) (bySig[e.sig] = bySig[e.sig] || []).push(e);
+      const groups = Object.entries(bySig)
+        .map(([sig, entries]) => ({ sig, entries, count: entries.length, last: entries[entries.length - 1] }))
+        .sort((a, b) => b.count - a.count);
+
+      if (this._mathSelSig == null || !bySig[this._mathSelSig]) this._mathSelSig = groups[0].sig;
+
+      const card = document.createElement('div');
+      card.className = 'chart-card';
+      card.innerHTML = `<div class="chart-card-title">Configurations les plus jouées</div>
+        <div class="chart-card-sub">Choisis un réglage pour voir sa progression</div>`;
+      const chips = document.createElement('div');
+      chips.className = 'mp-cfg-chips';
+      groups.slice(0, 6).forEach((g) => {
+        const c = document.createElement('button');
+        c.className = 'mp-cfg-chip' + (g.sig === this._mathSelSig ? ' active' : '');
+        c.innerHTML = `${cfgLabel(g.last)} <span class="mp-cfg-count">${g.count}×</span>`;
+        c.addEventListener('click', () => { this._mathSelSig = g.sig; this._render(); });
+        chips.appendChild(c);
+      });
+      card.appendChild(chips);
+
+      const sel = bySig[this._mathSelSig];
+      const qpms = sel.map((e) => e.qpm);
+      const canvas = document.createElement('canvas');
+      canvas.style.height = '120px';
+      canvas.style.marginTop = '10px';
+      card.appendChild(canvas);
+      const cap = document.createElement('div');
+      cap.className = 'mp-cap';
+      const bestQ = Math.max(...qpms), lastQ = qpms[qpms.length - 1];
+      cap.textContent = sel.length >= 2
+        ? `${sel.length} sessions · dernière ${lastQ} rép./min · record ${bestQ} rép./min`
+        : `1 session (${lastQ} rép./min) — rejoue cette config pour tracer la courbe`;
+      card.appendChild(cap);
+      root.appendChild(card);
+
+      requestAnimationFrame(() => {
+        const maxY = Math.max(...qpms, 1);
+        drawLineChart(canvas, qpms, {
+          maxY: Math.ceil(maxY * 1.15), minY: 0, color: '#6366f1',
+          labels: [sel[0].date.slice(5), sel[sel.length - 1].date.slice(5)],
+        });
+      });
+    }
+
+    // ---- Agrégats par opération (couverture + vitesse) ----
+    const byOp = {};
+    for (const it of items) {
+      const b = byOp[it.opType] || (byOp[it.opType] = { count: 0, sum: 0 });
+      b.count++; b.sum += it.time_ms || 0;
+    }
+    const opRows = Object.entries(byOp).map(([op, b]) => ({ op, count: b.count, avg: b.sum / b.count }));
+
+    // ---- 2. Couverture par opération ----
+    if (opRows.length) {
+      const covCard = document.createElement('div');
+      covCard.className = 'chart-card';
+      covCard.innerHTML = `<div class="chart-card-title">Couverture par opération</div>
+        <div class="chart-card-sub">Combien de calculs de chaque type tu as travaillés</div>`;
+      const hb = document.createElement('div');
+      hb.className = 'mp-hbars';
+      const sorted = [...opRows].sort((a, b) => b.count - a.count);
+      buildHBars(hb, sorted.map((r) => ({
+        label: OP_LABEL[r.op] || r.op, value: r.count, display: `${r.count}`, color: OP_COLOR[r.op],
+      })));
+      covCard.appendChild(hb);
+      if (sorted.length >= 2) {
+        const cap = document.createElement('div');
+        cap.className = 'mp-cap';
+        cap.innerHTML = `💪 Le plus : <b>${OP_LABEL[sorted[0].op]}</b> · 🎯 Le moins : <b>${OP_LABEL[sorted[sorted.length - 1].op]}</b>`;
+        covCard.appendChild(cap);
+      }
+      root.appendChild(covCard);
+    }
+
+    // ---- 3. Couverture des nombres 1-20 ----
+    const byNum = {};
+    for (let i = 1; i <= 20; i++) byNum[i] = 0;
+    for (const it of items) for (const nn of mathOperands(it)) byNum[nn]++;
+    const totalNum = Object.values(byNum).reduce((a, b) => a + b, 0);
+    if (totalNum > 0) {
+      const numCard = document.createElement('div');
+      numCard.className = 'chart-card';
+      numCard.innerHTML = `<div class="chart-card-title">Couverture des nombres (1 à 20)</div>
+        <div class="chart-card-sub">Intensité = fréquence de travail · rouge = délaissé</div>`;
+      const grid = document.createElement('div');
+      grid.className = 'mp-numgrid';
+      const maxN = Math.max(...Object.values(byNum), 1);
+      const used = Object.values(byNum).filter((c) => c > 0).sort((a, b) => a - b);
+      const lowThresh = used.length ? used[Math.floor(used.length * 0.25)] : 0;
+      for (let i = 1; i <= 20; i++) {
+        const c = byNum[i];
+        const cell = document.createElement('div');
+        const weak = c === 0 || c <= lowThresh;
+        cell.className = 'mp-numcell' + (weak ? ' weak' : '');
+        const intensity = c === 0 ? 0 : 0.15 + 0.85 * (c / maxN);
+        cell.style.background = c === 0 ? 'transparent' : `rgba(99,102,241,${intensity.toFixed(2)})`;
+        cell.innerHTML = `<span class="mp-numcell-n">${i}</span><span class="mp-numcell-c">${c}</span>`;
+        grid.appendChild(cell);
+      }
+      numCard.appendChild(grid);
+      const least = Object.entries(byNum).sort((a, b) => a[1] - b[1]).slice(0, 3).map(([n]) => n);
+      const cap = document.createElement('div');
+      cap.className = 'mp-cap';
+      cap.innerHTML = `🎯 À travailler davantage : <b>${least.join(', ')}</b>`;
+      numCard.appendChild(cap);
+      root.appendChild(numCard);
+    }
+
+    // ---- 4. Vitesse par opération ----
+    if (opRows.length) {
+      const spCard = document.createElement('div');
+      spCard.className = 'chart-card';
+      spCard.innerHTML = `<div class="chart-card-title">Vitesse par opération</div>
+        <div class="chart-card-sub">Temps moyen de réponse · plus court = mieux maîtrisé</div>`;
+      const hb = document.createElement('div');
+      hb.className = 'mp-hbars';
+      const sorted = [...opRows].sort((a, b) => a.avg - b.avg);
+      buildHBars(hb, sorted.map((r) => ({
+        label: OP_LABEL[r.op] || r.op, value: r.avg, display: `${(r.avg / 1000).toFixed(2)}s`, color: OP_COLOR[r.op],
+      })));
+      spCard.appendChild(hb);
+      if (sorted.length >= 2) {
+        const cap = document.createElement('div');
+        cap.className = 'mp-cap';
+        cap.innerHTML = `⚡ Le plus rapide : <b>${OP_LABEL[sorted[0].op]}</b> · 🐌 Le plus lent : <b>${OP_LABEL[sorted[sorted.length - 1].op]}</b>`;
+        spCard.appendChild(cap);
+      }
+      root.appendChild(spCard);
+    }
   },
 
   setFilter(key, value) {
