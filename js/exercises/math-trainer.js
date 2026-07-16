@@ -13,6 +13,7 @@ function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 const CFG_KEY  = 'psy0_math_cfg';
 const BEST_KEY = 'psy0_math_best';
 const HIST_KEY = 'psy0_math_hist';
+const LOG_KEY  = 'psy0_math_log';  // journal enrichi par session (pour la page Progression)
 
 const DUR_OPTS   = [{ v: 30000, l: '30s' }, { v: 60000, l: '1 min' }, { v: 120000, l: '2 min' }, { v: 300000, l: '5 min' }];
 const ROUND_OPTS = [10, 20, 30];
@@ -521,6 +522,26 @@ export default {
         const hist = loadJSON(HIST_KEY, []);
         hist.push({ d: new Date().toISOString().slice(5, 10), qpm });
         saveJSON(HIST_KEY, hist.slice(-30));
+
+        // Journal enrichi pour la page Progression : réglages + métriques.
+        const avgMs = Math.round(totalMs / n);
+        const log = loadJSON(LOG_KEY, []);
+        log.push({
+          t: Date.now(),
+          date: new Date().toISOString().slice(0, 10),
+          sig,
+          mode: cfg.mode,
+          dur: cfg.dur,
+          rounds: cfg.rounds,
+          ops: [...cfg.ops],
+          terms: cfg.terms,
+          numbers: [...cfg.numbers],
+          n,
+          totalMs,
+          qpm,
+          avgMs,
+        });
+        saveJSON(LOG_KEY, log.slice(-300));
       }
 
       qz.innerHTML = '';
