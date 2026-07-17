@@ -7,6 +7,8 @@
 // permis (touche −). Auto-validation sur bonne réponse uniquement.
 // Records par configuration + historique de progression (rép./min).
 
+import { analyzeByOperation, loadHistoryMathItems, buildRevisionRows } from '../math-analysis.js';
+
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -618,6 +620,18 @@ export default {
             bilan.appendChild(legend);
           }
           s.appendChild(bilan);
+        }
+
+        // À réviser : calculs les plus difficiles (session + historique)
+        const analysis = analyzeByOperation([...loadHistoryMathItems(), ...items]);
+        if (analysis.length) {
+          const rev = document.createElement('div');
+          rev.className = 'cha-chart';
+          const rt = document.createElement('div');
+          rt.className = 'cha-chart-title';
+          rt.textContent = '🎯 À réviser — tes points de blocage';
+          rev.appendChild(rt);
+          if (buildRevisionRows(rev, analysis)) s.appendChild(rev);
         }
 
         // Temps par question

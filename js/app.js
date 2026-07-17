@@ -4,6 +4,7 @@ import { Engine } from './engine.js';
 import { Numpad, Timer, Feedback, Toast, buildChoiceButtons, buildLetterGrid, drawLineChart, drawBarChart, drawSparkline, setProgressBar } from './ui.js';
 import { registry } from './exercises/registry.js';
 import { buildConfigScreen } from './exercise-config.js';
+import { analyzeByOperation, buildRevisionRows } from './math-analysis.js';
 
 // ============================================================
 // ÉTAT GLOBAL
@@ -643,6 +644,19 @@ const ProgressScreen = {
     title.style.marginTop = '4px';
     title.textContent = '🔢 Calcul mental — analyse';
     root.appendChild(title);
+
+    // ---- 0. À réviser — calculs les plus difficiles (motifs récurrents) ----
+    if (items.length) {
+      const analysis = analyzeByOperation(items);
+      if (analysis.some((a) => a.pattern || a.slowFacts.length)) {
+        const revCard = document.createElement('div');
+        revCard.className = 'chart-card';
+        revCard.innerHTML = `<div class="chart-card-title">🎯 À réviser — tes points de blocage</div>
+          <div class="chart-card-sub">Séparé par opération, sur toute la période sélectionnée</div>`;
+        buildRevisionRows(revCard, analysis);
+        root.appendChild(revCard);
+      }
+    }
 
     // ---- 1. Configurations les plus jouées + progression ----
     if (log.length) {
