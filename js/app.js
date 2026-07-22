@@ -470,20 +470,23 @@ function describeNumbers(nums) {
 }
 function cfgLabel(e) {
   const target = e.mode === 'time' ? mathDurLabel(e.dur) : `${e.rounds}Q`;
-  return `${target} · ${(e.ops || []).join('')} · ${describeNumbers(e.numbers || [])}`;
+  const range = (e.min !== undefined && e.max !== undefined)
+    ? `${e.min}…${e.max}`
+    : describeNumbers(e.numbers || []);
+  return `${target} · ${(e.ops || []).join('')} · ${range}`;
 }
-// Nombres "configurés" (1-20) impliqués dans une question de calcul mental.
+// Opérandes 1-20 impliqués dans une question (pour la grille de couverture).
+// Priorité au champ `operands` de l'item ; sinon parsing de l'énoncé.
 function mathOperands(item) {
-  const op = item.opType;
-  const expr = String(item.question || '').replace('= ?', '').replace('=', '').trim();
-  let out = [];
-  if (op === '×') {
-    out = expr.split('×').map((s) => parseInt(s, 10));
-  } else if (op === '÷') {
-    const parts = expr.split('÷');
-    out = [parseInt(parts[1], 10), parseInt(item.correctAnswer, 10)];
+  let out;
+  if (Array.isArray(item.operands)) {
+    out = item.operands;
   } else {
-    out = expr.split(/[+−]/).map((s) => parseInt(s, 10));
+    const op = item.opType;
+    const expr = String(item.question || '').replace('= ?', '').replace('=', '').trim();
+    if (op === '×') out = expr.split('×').map((s) => parseInt(s, 10));
+    else if (op === '÷') { const parts = expr.split('÷'); out = [parseInt(parts[1], 10), parseInt(item.correctAnswer, 10)]; }
+    else out = expr.split(/[+−]/).map((s) => parseInt(s, 10));
   }
   return out.filter((v) => Number.isFinite(v) && v >= 1 && v <= 20);
 }

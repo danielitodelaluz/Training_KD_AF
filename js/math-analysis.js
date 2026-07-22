@@ -13,9 +13,12 @@ export const OP_LABEL = {
   '÷': 'Divisions',
 };
 
-// Nombres "configurés" (1-20) impliqués dans une question de calcul mental.
+// Opérandes impliqués dans une question de calcul mental (négatifs inclus).
+// Priorité au champ `operands` stocké dans l'item ; sinon on retombe sur un
+// parsing de l'énoncé (données anciennes, positives uniquement).
 // × → les deux facteurs · ÷ → diviseur + quotient (pas le dividende) · +/− → les termes.
 export function mathOperands(item) {
+  if (Array.isArray(item.operands)) return item.operands.filter((v) => Number.isFinite(v));
   const op = item.opType;
   const expr = String(item.question || '').replace('= ?', '').replace('=', '').trim();
   let out = [];
@@ -27,7 +30,7 @@ export function mathOperands(item) {
   } else {
     out = expr.split(/[+−]/).map((s) => parseInt(s, 10));
   }
-  return out.filter((v) => Number.isFinite(v) && v >= 1 && v <= 20);
+  return out.filter((v) => Number.isFinite(v));
 }
 
 function median(arr) {

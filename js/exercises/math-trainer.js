@@ -12,6 +12,10 @@ import { analyzeByOperation, loadHistoryMathItems, buildRevisionRows } from '../
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+// Formatage avec le vrai signe moins ; parenthèses pour un négatif en 2e position.
+const fmtNum = (x) => (x < 0 ? '−' + Math.abs(x) : String(x));
+const wrapNeg = (x) => (x < 0 ? `(${fmtNum(x)})` : fmtNum(x));
+
 const CFG_KEY  = 'psy0_math_cfg';
 const BEST_KEY = 'psy0_math_best';
 const HIST_KEY = 'psy0_math_hist';
@@ -19,7 +23,7 @@ const LOG_KEY  = 'psy0_math_log';  // journal enrichi par session (pour la page 
 
 const DUR_OPTS   = [{ v: 30000, l: '30s' }, { v: 60000, l: '1 min' }, { v: 120000, l: '2 min' }, { v: 300000, l: '5 min' }];
 const ROUND_OPTS = [10, 20, 30];
-const ALL_NUMBERS = Array.from({ length: 20 }, (_, i) => i + 1);
+const RANGE_MIN = -20, RANGE_MAX = 20;
 
 function loadJSON(key, fallback) {
   try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; }
@@ -30,7 +34,11 @@ function saveJSON(key, v) {
 }
 
 function defaultCfg() {
-  return { mode: 'time', dur: 60000, rounds: 20, ops: ['+', '−', '×'], terms: 2, numbers: ALL_NUMBERS.slice(0, 10) };
+  return { mode: 'time', dur: 60000, rounds: 20, ops: ['+', '−', '×'], terms: 2, min: 1, max: 10 };
+}
+
+function clampRange(v, d) {
+  return Number.isFinite(v) ? Math.max(RANGE_MIN, Math.min(RANGE_MAX, Math.round(v))) : d;
 }
 
 function normalizeCfg(raw) {
@@ -43,52 +51,66 @@ function normalizeCfg(raw) {
   cfg.ops = Array.isArray(cfg.ops) ? cfg.ops.filter((o) => ['+', '−', '×', '÷'].includes(o)) : def.ops;
   if (!cfg.ops.length) cfg.ops = def.ops;
   cfg.terms = Math.max(2, Math.min(5, parseInt(cfg.terms) || 2));
-  cfg.numbers = Array.isArray(cfg.numbers) ? [...new Set(cfg.numbers.filter((n) => ALL_NUMBERS.includes(n)))].sort((a, b) => a - b) : def.numbers;
-  if (!cfg.numbers.length) cfg.numbers = def.numbers;
+  // Migration depuis l'ancien format (liste `numbers`) vers une plage min/max
+  if ((raw.min === undefined || raw.max === undefined) && Array.isArray(raw.numbers) && raw.numbers.length) {
+    cfg.min = Math.min(...raw.numbers);
+    cfg.max = Math.max(...raw.numbers);
+  }
+  cfg.min = clampRange(cfg.min, def.min);
+  cfg.max = clampRange(cfg.max, def.max);
+  if (cfg.min > cfg.max) { const t = cfg.min; cfg.min = cfg.max; cfg.max = t; }
+  delete cfg.numbers;
   return cfg;
 }
 
 // Signature de configuration → clé de record
 function cfgSignature(cfg) {
-  const mask = cfg.numbers.reduce((m, n) => m | (1 << n), 0);
   const target = cfg.mode === 'time' ? `T${cfg.dur}` : `Q${cfg.rounds}`;
-  return `${target}|${[...cfg.ops].sort().join('')}|${cfg.terms}|${mask}`;
+  return `${target}|${[...cfg.ops].sort().join('')}|${cfg.terms}|R${cfg.min}_${cfg.max}`;
 }
 
 // Génère une question. Divisions exactes par construction, ×/÷ à 2 termes,
 // mélange +/− dans une même expression quand les deux sont cochés.
+// Les nombres sont tirés dans la plage [cfg.min, cfg.max] (négatifs possibles).
+// L'item renvoie aussi `nums` : les opérandes exacts (pour l'analyse « à réviser »).
 function makeQuestion(cfg) {
+  const nums = [];
+  for (let i = cfg.min; i <= cfg.max; i++) nums.push(i);
+
   const types = [];
   if (cfg.ops.includes('+') || cfg.ops.includes('−')) types.push('add');
   if (cfg.ops.includes('×')) types.push('mul');
   if (cfg.ops.includes('÷')) types.push('div');
   const type = pick(types);
-  const nums = cfg.numbers;
 
   if (type === 'add') {
     const signs = ['+', '−'].filter((o) => cfg.ops.includes(o));
     const first = pick(nums);
+    const operands = [first];
     let total = first;
-    let str = String(first);
+    let str = fmtNum(first);
     for (let i = 1; i < cfg.terms; i++) {
       const o = pick(signs);
       const n = pick(nums);
+      operands.push(n);
       total += o === '+' ? n : -n;
-      str += ` ${o} ${n}`;
+      str += ` ${o} ${wrapNeg(n)}`;
     }
-    return { str, result: total, type: signs.join('') };
+    return { str, result: total, type: signs.join(''), nums: operands };
   }
 
   if (type === 'mul') {
     const a = pick(nums), b = pick(nums);
-    return { str: `${a} × ${b}`, result: a * b, type: '×' };
+    return { str: `${fmtNum(a)} × ${wrapNeg(b)}`, result: a * b, type: '×', nums: [a, b] };
   }
 
-  // Division exacte : on tire diviseur et quotient, on affiche le produit
-  const pool = nums.filter((n) => n >= 2);
-  const d = pick(pool.length ? pool : nums);
+  // Division exacte : diviseur non nul (|d| ≥ 2 de préférence), quotient libre.
+  const divPool = nums.filter((n) => Math.abs(n) >= 2);
+  const nonZero = nums.filter((n) => n !== 0);
+  const d = pick(divPool.length ? divPool : (nonZero.length ? nonZero : [2]));
   const q = pick(nums);
-  return { str: `${d * q} ÷ ${d}`, result: q, type: '÷' };
+  const dividend = d * q;
+  return { str: `${fmtNum(dividend)} ÷ ${wrapNeg(d)}`, result: q, type: '÷', nums: [d, q] };
 }
 
 const TYPE_LABELS = { '+': 'Additions', '−': 'Soustractions', '+−': 'Add./Sous.', '×': 'Multiplications', '÷': 'Divisions' };
@@ -241,52 +263,54 @@ export default {
       termsNote.textContent = 'Multiplications et divisions restent à 2 termes';
       wrap.appendChild(termsNote);
 
-      // Nombres autorisés : presets + grille 1-20
-      const numsLblRow = document.createElement('div');
-      numsLblRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:11px 0 8px;gap:8px;';
-      const numsLbl = document.createElement('div');
-      numsLbl.className = 'cha-cfg-lbl';
-      numsLbl.textContent = 'Nombres';
-      const presets = document.createElement('div');
-      presets.className = 'cha-chips';
-      numsLblRow.append(numsLbl, presets);
-      wrap.appendChild(numsLblRow);
+      // Plage de nombres tirés dans les calculs (négatifs possibles)
+      const rangeRow = document.createElement('div');
+      rangeRow.className = 'cha-cfg-row';
+      const rangeLbl = document.createElement('div');
+      rangeLbl.className = 'cha-cfg-lbl';
+      rangeLbl.textContent = 'Plage';
+      rangeRow.appendChild(rangeLbl);
 
-      const grid = document.createElement('div');
-      grid.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:6px;';
-      wrap.appendChild(grid);
+      const rangeCtrl = document.createElement('div');
+      rangeCtrl.style.cssText = 'display:flex;align-items:center;gap:8px;';
 
-      const numBtns = {};
-      const renderNums = () => {
-        ALL_NUMBERS.forEach((n) => {
-          numBtns[n].classList.toggle('active', cfg.numbers.includes(n));
-        });
-        refreshBest();
+      const mkRangeStepper = (key) => {
+        const box = document.createElement('div');
+        box.className = 'cha-stepper';
+        const minus = document.createElement('button');
+        minus.className = 'cha-step-btn'; minus.textContent = '−';
+        const val = document.createElement('div');
+        val.className = 'cha-step-val'; val.style.minWidth = '38px';
+        const plus = document.createElement('button');
+        plus.className = 'cha-step-btn'; plus.textContent = '+';
+        const clampBounds = () => {
+          cfg.min = clampRange(cfg.min, cfg.min);
+          cfg.max = clampRange(cfg.max, cfg.max);
+          // Garder min ≤ max : le stepper déplacé pousse l'autre si besoin.
+          if (cfg.min > cfg.max) { if (key === 'min') cfg.max = cfg.min; else cfg.min = cfg.max; }
+        };
+        minus.addEventListener('click', () => { cfg[key]--; clampBounds(); syncRange(); });
+        plus.addEventListener('click',  () => { cfg[key]++; clampBounds(); syncRange(); });
+        box.append(minus, val, plus);
+        return { box, refresh: () => { val.textContent = fmtNum(cfg[key]); } };
       };
-      ALL_NUMBERS.forEach((n) => {
-        const c = document.createElement('button');
-        c.className = 'cha-chip';
-        c.textContent = n;
-        c.style.cssText = 'text-align:center;padding:6px 0;';
-        c.addEventListener('click', () => {
-          if (cfg.numbers.includes(n)) {
-            if (cfg.numbers.length === 1) return; // au moins un nombre
-            cfg.numbers = cfg.numbers.filter((x) => x !== n);
-          } else {
-            cfg.numbers = [...cfg.numbers, n].sort((a, b) => a - b);
-          }
-          renderNums();
-        });
-        numBtns[n] = c;
-        grid.appendChild(c);
-      });
 
-      const applyPreset = (list) => { cfg.numbers = [...list]; renderNums(); };
-      const p1 = mkChip('1-10',  false, () => applyPreset(ALL_NUMBERS.slice(0, 10)));
-      const p2 = mkChip('11-20', false, () => applyPreset(ALL_NUMBERS.slice(10)));
-      const p3 = mkChip('Tout',  false, () => applyPreset(ALL_NUMBERS));
-      presets.append(p1, p2, p3);
-      renderNums();
+      const minS = mkRangeStepper('min');
+      const dash = document.createElement('span');
+      dash.textContent = 'à';
+      dash.style.cssText = 'color:var(--text-muted);font-size:0.85rem;';
+      const maxS = mkRangeStepper('max');
+      rangeCtrl.append(minS.box, dash, maxS.box);
+      rangeRow.appendChild(rangeCtrl);
+      wrap.appendChild(rangeRow);
+
+      const rangeNote = document.createElement('div');
+      rangeNote.style.cssText = 'font-size:0.7rem;color:var(--text-muted);padding:4px 0 0;text-align:right;';
+      rangeNote.textContent = 'Nombres tirés de min à max — négatifs autorisés';
+      wrap.appendChild(rangeNote);
+
+      const syncRange = () => { minS.refresh(); maxS.refresh(); refreshBest(); };
+      syncRange();
 
       // Record pour cette configuration (élément créé plus haut)
       wrap.appendChild(bestEl);
@@ -453,6 +477,7 @@ export default {
           partial: false,
           time_ms: ms,
           opType: q.type,
+          operands: q.nums,
         });
         fbEl.textContent = `✓ ${(ms / 1000).toFixed(2)}s`;
         fbEl.className = 'cha-fb cha-fb--ok';
@@ -536,7 +561,8 @@ export default {
           rounds: cfg.rounds,
           ops: [...cfg.ops],
           terms: cfg.terms,
-          numbers: [...cfg.numbers],
+          min: cfg.min,
+          max: cfg.max,
           n,
           totalMs,
           qpm,
